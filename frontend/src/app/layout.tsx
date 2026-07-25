@@ -18,11 +18,11 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'Bloomon Royale | Luxury Garden Dining & Fine Cuisine',
-  description: 'Experience gourmet dining at Bloomon Royale in Warangal. Reimagined luxury, wood-fired pizzas, signature Indian curries, and premium garden ambiance.',
-  keywords: 'Bloomon Royale, Warangal Restaurant, Fine Dining, Luxury Garden Restaurant, Online Food Delivery, Table Reservation, Indian Cuisine',
+  title: 'Bloomon Family Restaurant | Garden Dining & Fine Cuisine',
+  description: 'Experience gourmet dining at Bloomon Family Restaurant in Warangal. Wood-fired pizzas, signature Indian curries, and premium garden ambiance.',
+  keywords: 'Bloomon Family Restaurant, Warangal Restaurant, Fine Dining, Garden Restaurant, Online Food Delivery, Table Reservation, Indian Cuisine',
   openGraph: {
-    title: 'Bloomon Royale | Luxury Dining',
+    title: 'Bloomon Family Restaurant | Garden Dining',
     description: 'Order online or book a luxury table at Warangal’s finest garden restaurant.',
     images: [{ url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c' }],
     type: 'website',
@@ -48,7 +48,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Restaurant',
-              'name': 'Bloomon Royale',
+              'name': 'Bloomon Family Restaurant',
               'image': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
               'address': {
                 '@type': 'PostalAddress',

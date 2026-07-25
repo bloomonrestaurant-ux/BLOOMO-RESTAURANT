@@ -418,7 +418,7 @@ export const downloadInvoice = async (req: AuthenticatedRequest, res: Response) 
     doc
       .fillColor('#D4AF37')
       .fontSize(20)
-      .text('BLOOMON ROYALE', 50, 50, { align: 'left' })
+      .text('BLOOMON FAMILY RESTAURANT', 50, 50, { align: 'left' })
       .fillColor('#333333')
       .fontSize(10)
       .text('Geesukonda Main Road, Dharmaram, Warangal', 50, 75)
@@ -487,7 +487,7 @@ export const downloadInvoice = async (req: AuthenticatedRequest, res: Response) 
       .font('Helvetica-Oblique')
       .fontSize(10)
       .fillColor('#999999')
-      .text('Thank you for dining with Bloomon Royale! Taste the Royal Heritage.', 50, 700, { align: 'center' });
+      .text('Thank you for dining with Bloomon Family Restaurant!', 50, 700, { align: 'center' });
 
     doc.end();
   } catch (error) {

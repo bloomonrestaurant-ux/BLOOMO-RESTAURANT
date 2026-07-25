@@ -55,7 +55,7 @@ const faqs = [
   },
   {
     question: 'Do you offer catering for corporate events and weddings?',
-    answer: 'Yes, Bloomon Royale offers premium boutique catering services. You can contact our event coordinator at support@bloomon.com.'
+    answer: 'Yes, Bloomon Family Restaurant offers premium boutique catering services. You can contact our event coordinator at support@bloomon.com.'
   },
   {
     question: 'What safety standards does your kitchen maintain?',
@@ -117,7 +117,7 @@ export default function Home() {
             className="text-4xl md:text-7xl font-display font-extrabold text-gold-gradient tracking-wide"
           >
             Taste Royal Luxury <br />
-            At Bloomon Royale
+            At Bloomon Family Restaurant
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -174,7 +174,7 @@ export default function Home() {
             To Imperial Table
           </motion.h2>
           <motion.p variants={itemVariants} className="text-primary-light/75 font-sans leading-relaxed text-sm md:text-base">
-            Bloomon Royale began as a humble veg garden-style family hangout, serving traditional clay tandoors and local delights. Rooted in the rich cultural history of Warangal, we reimagined our dining space into an onyx-and-gold themed luxury retreat.
+            Bloomon Family Restaurant began as a humble veg garden-style family hangout, serving traditional clay tandoors and local delights. Rooted in the rich cultural history of Warangal, we reimagined our dining space into an onyx-and-gold themed luxury retreat.
           </motion.p>
           <motion.p variants={itemVariants} className="text-primary-light/70 font-sans leading-relaxed text-sm">
             Our culinary team values farm-fresh local spices, premium imported oils, and slow hand-cooking methods, providing a luxurious experience that feels both familiar and refreshingly upscale.
@@ -274,7 +274,7 @@ export default function Home() {
           <p className="text-primary text-xs tracking-[0.2em] font-sans font-bold">CULINARY VISIONARY</p>
           <h2 className="text-3xl md:text-5xl font-display font-bold leading-tight">Meet Executive Chef Devraj</h2>
           <blockquote className="border-l-2 border-primary pl-4 text-primary-light/80 italic font-display text-lg">
-            "Food is a bridge between cultural memories and physical wellness. At Bloomon Royale, we marry the age-old heritage of Indian slow cookers with modern luxury palettes."
+            "Food is a bridge between cultural memories and physical wellness. At Bloomon Family Restaurant, we marry the age-old heritage of Indian slow cookers with modern luxury palettes."
           </blockquote>
           <p className="text-sm text-primary-light/65 font-sans leading-relaxed">
             With over 18 years of experience at premium Michelin-tier kitchens across Hyderabad and Mumbai, Chef Devraj specializes in wood-fired sourdough baking and traditional Hyderabadi-Telangana spice fusions.
@@ -374,7 +374,7 @@ export default function Home() {
         {/* Contact Info and Newsletter */}
         <div className="space-y-8">
           <div className="space-y-2">
-            <h2 className="text-3xl md:text-4xl font-display font-bold">Contact Bloomon Royale</h2>
+            <h2 className="text-3xl md:text-4xl font-display font-bold">Contact Bloomon Family Restaurant</h2>
             <p className="text-sm text-primary-light/60 font-sans">
               Have questions, feedback, or need reservation assistance? Get in touch.
             </p>
@@ -414,7 +414,7 @@ export default function Home() {
           {/* Using a styled image or iframe showing local Warangal details */}
           <div className="absolute inset-0 bg-bg-dark flex flex-col items-center justify-center p-8 space-y-4 text-center z-10">
             <MapPin className="w-12 h-12 text-primary animate-bounce" />
-            <h3 className="font-display text-xl font-bold text-gold-gradient">Bloomon Royale Garden Dining</h3>
+            <h3 className="font-display text-xl font-bold text-gold-gradient">Bloomon Family Restaurant Garden Dining</h3>
             <p className="text-xs text-primary-light/60 font-sans max-w-xs">
               Geesukonda Main Road, Dharmaram, Warangal, Telangana 506002
             </p>

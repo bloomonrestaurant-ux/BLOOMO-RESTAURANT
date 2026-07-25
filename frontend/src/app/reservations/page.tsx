@@ -206,7 +206,7 @@ export default function ReservationsPage() {
                   className="mt-1 cursor-pointer accent-primary"
                 />
                 <div>
-                  <p className="font-bold text-xs">Bloomon Royale VIP Upgrade (+ ₹500)</p>
+                  <p className="font-bold text-xs">Bloomon Family Restaurant VIP Upgrade (+ ₹500)</p>
                   <p className="text-[10px] text-primary-light/60 mt-0.5 leading-relaxed">
                     Includes priority window table booking, custom table decor (candles, fresh roses), and complimentary welcome drink coolers for all guests.
                   </p>

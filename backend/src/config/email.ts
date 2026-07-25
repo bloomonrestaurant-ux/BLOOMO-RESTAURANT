@@ -20,7 +20,7 @@ export const sendOTPEmail = async (email: string, name: string, otp: string): Pr
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Verify Your Bloomon Royale Account</title>
+      <title>Verify Your Bloomon Family Restaurant Account</title>
       <style>
         body {
           margin: 0;
@@ -121,12 +121,12 @@ export const sendOTPEmail = async (email: string, name: string, otp: string): Pr
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo-text">Bloomon Royale</div>
+          <div class="logo-text">Bloomon Family Restaurant</div>
           <div class="logo-sub">Warangal's Finest Diner</div>
         </div>
         <div class="content">
           <h1>Hello, ${name}</h1>
-          <p>Thank you for choosing Bloomon Royale. To proceed with your request, please use the following secure 6-digit verification code:</p>
+          <p>Thank you for choosing Bloomon Family Restaurant. To proceed with your request, please use the following secure 6-digit verification code:</p>
           
           <div class="otp-container">
             <div class="otp-code">${otp}</div>
@@ -140,7 +140,7 @@ export const sendOTPEmail = async (email: string, name: string, otp: string): Pr
           </div>
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Bloomon Royale. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Bloomon Family Restaurant. All rights reserved.</p>
           <p>Warangal, Telangana, India</p>
         </div>
       </div>
@@ -152,7 +152,7 @@ export const sendOTPEmail = async (email: string, name: string, otp: string): Pr
     const data = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
-      subject: `Verify Your Account - Bloomon Royale`,
+      subject: `Verify Your Account - Bloomon Family Restaurant`,
       html: htmlContent,
     });
     return data;

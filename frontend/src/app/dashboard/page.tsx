@@ -165,7 +165,7 @@ export default function DashboardPage() {
             <p className="text-[10px] text-primary-light/50 tracking-wider">
               {forgotPasswordMode 
                 ? 'REQUEST VERIFICATION CODE' 
-                : (authMode === 'login' ? 'LOG IN TO ACCESS BLOOMON ROYALE' : 'JOIN WARANGALS FINEST DINER')}
+                : (authMode === 'login' ? 'LOG IN TO ACCESS BLOOMON FAMILY RESTAURANT' : 'JOIN WARANGALS FINEST DINER')}
             </p>
           </div>
 

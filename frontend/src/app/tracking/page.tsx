@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import API from '@/services/api';
@@ -15,7 +15,7 @@ const trackingStages = [
   { status: 'DELIVERED', label: 'Delivered', desc: 'Taste the royal feast!', icon: Smile },
 ];
 
-export default function TrackingPage() {
+function TrackingPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orderId = searchParams.get('orderId') || 'demo_order_id_123';
@@ -184,5 +184,17 @@ export default function TrackingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-bg-dark flex items-center justify-center">
+        <Loader className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    }>
+      <TrackingPageContent />
+    </Suspense>
   );
 }

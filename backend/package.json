@@ -1,7 +1,7 @@
 {
-  "name": "bloomon-royale-backend",
+  "name": "bloomon-family-restaurant-backend",
   "version": "1.0.0",
-  "description": "Production-ready backend API for Bloomon Royale Restaurant Management System",
+  "description": "Production-ready backend API for Bloomon Family Restaurant Management System",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

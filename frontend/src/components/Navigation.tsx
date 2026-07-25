@@ -56,7 +56,7 @@ export default function Navigation() {
         {/* Brand Logo */}
         <Link href="/" className="flex items-center space-x-2">
           <span className="font-display text-2xl font-bold tracking-widest text-gold-gradient">
-            BLOOMON ROYALE
+            BLOOMON FAMILY RESTAURANT
           </span>
         </Link>
 

@@ -43,7 +43,7 @@ export const createReservation = async (req: AuthenticatedRequest, res: Response
         userId: req.user.id,
         type: 'EMAIL',
         title: 'Table Reservation Received',
-        message: `Your reservation request at Bloomon Royale for ${guestsCount} guests on ${new Date(
+        message: `Your reservation request at Bloomon Family Restaurant for ${guestsCount} guests on ${new Date(
           date
         ).toLocaleDateString()} at ${time} is under review. We will notify you once approved.`,
       },

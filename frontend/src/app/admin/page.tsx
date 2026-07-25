@@ -129,7 +129,7 @@ export default function AdminPage() {
         <div className="flex justify-between items-center border-b border-primary/20 pb-6">
           <div className="space-y-1">
             <h1 className="text-3xl font-display font-bold text-gold-gradient">Management Console</h1>
-            <p className="text-[10px] text-primary-light/50 tracking-wider">BLOOMON ROYALE ADMINISTRATION HUB</p>
+            <p className="text-[10px] text-primary-light/50 tracking-wider">BLOOMON FAMILY RESTAURANT ADMINISTRATION HUB</p>
           </div>
           <button
             onClick={() => {

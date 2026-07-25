@@ -9,7 +9,7 @@ export default function Footer() {
         {/* About Section */}
         <div className="space-y-4">
           <h3 className="font-display text-2xl font-bold text-gold-gradient">
-            BLOOMON ROYALE
+            BLOOMON FAMILY RESTAURANT
           </h3>
           <p className="text-sm font-sans text-primary-light/70 leading-relaxed">
             Reimagining fine dining in Warangal. Indulge in wood-fired delights, legacy tandoors, and luxury garden setups crafted for the royal family experiences.
@@ -79,7 +79,7 @@ export default function Footer() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-primary/10 text-center font-sans text-xs text-primary-light/40 flex flex-col md:flex-row justify-between items-center gap-4">
-        <p>© {new Date().getFullYear()} Bloomon Royale. Reimagined Luxury Dining. All Rights Reserved.</p>
+        <p>© {new Date().getFullYear()} Bloomon Family Restaurant. All Rights Reserved.</p>
         <div className="flex space-x-6">
           <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
           <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
