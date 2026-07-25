@@ -94,10 +94,8 @@ export default function Home() {
             alt="Luxury Interior Background"
             fill
             priority
-            className="object-cover opacity-35"
+            className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-bg-dark via-bg-dark/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-bg-dark via-transparent to-bg-dark" />
         </div>
 
         {/* Animated Contents */}
