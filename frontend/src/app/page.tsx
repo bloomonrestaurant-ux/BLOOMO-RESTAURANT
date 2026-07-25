@@ -90,7 +90,7 @@ export default function Home() {
         {/* Parallax Background */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=1600"
+            src="/hero-bg.jpg"
             alt="Luxury Interior Background"
             fill
             priority
