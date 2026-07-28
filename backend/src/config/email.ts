@@ -1,25 +1,68 @@
-import { Resend } from 'resend';
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key_for_compilation');
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@yourdomain.com';
+const EMAIL_FROM = process.env.EMAIL_USER!;
 
-/**
- * Sends a premium HTML email containing the verification OTP to the user.
- */
-export const sendOTPEmail = async (email: string, name: string, otp: string): Promise<any> => {
-  // Always log the OTP to the console in development for easier debugging and copying
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`\n========================================\n[DEVELOPMENT OTP LOG]\nTo: ${email} (${name})\nOTP Code: ${otp}\n========================================\n`);
+export const sendOTPEmail = async (
+  email: string,
+  name: string,
+  otp: string
+): Promise<any> => {
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`
+========================================
+[DEVELOPMENT OTP LOG]
+To: ${email} (${name})
+OTP Code: ${otp}
+========================================
+`);
   }
 
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_mock_key_for_compilation') {
-    console.warn('WARNING: RESEND_API_KEY is not defined or is a compilation mock. Email dispatch will be simulated in console.');
-    return { id: 'mock-id', simulated: true };
-  }
-
-
+  // KEEP YOUR EXISTING HTML TEMPLATE HERE
   const htmlContent = `
+    <!-- Paste your existing HTML here exactly as it is -->
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: EMAIL_FROM,
+      to: email,
+      subject: "Verify Your Account - Bloomon Family Restaurant",
+      html: htmlContent,
+    });
+
+    return {
+      success: true,
+      message: "Email sent successfully",
+    };
+  } catch (error: any) {
+    console.error("Error sending email via Gmail:", error);
+
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `WARNING: Gmail failed to send email: ${error.message || error}`
+      );
+
+      return {
+        success: false,
+        simulated: true,
+      };
+    }
+
+    throw error;
+  }
+};
+
+
+const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -153,28 +196,28 @@ export const sendOTPEmail = async (email: string, name: string, otp: string): Pr
     </html>
   `;
 
-  try {
-    const response = await resend.emails.send({
-      from: EMAIL_FROM,
-      to: email,
-      subject: `Verify Your Account - Bloomon Family Restaurant`,
-      html: htmlContent,
-    });
+try {
+  const response = await resend.emails.send({
+    from: EMAIL_FROM,
+    to: email,
+    subject: `Verify Your Account - Bloomon Family Restaurant`,
+    html: htmlContent,
+  });
 
-    if (response.error) {
-      throw response.error;
-    }
-
-    return response.data;
-  } catch (error: any) {
-    console.error('Error sending email via Resend:', error);
-
-    // In local development, gracefully fall back to the console logs instead of blocking registration
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`WARNING: Resend failed to send email: ${error.message || error}. Falling back to simulated delivery since NODE_ENV is development.`);
-      return { id: 'mock-id', simulated: true };
-    }
-
-    throw error;
+  if (response.error) {
+    throw response.error;
   }
+
+  return response.data;
+} catch (error: any) {
+  console.error('Error sending email via Resend:', error);
+
+  // In local development, gracefully fall back to the console logs instead of blocking registration
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(`WARNING: Resend failed to send email: ${error.message || error}. Falling back to simulated delivery since NODE_ENV is development.`);
+    return { id: 'mock-id', simulated: true };
+  }
+
+  throw error;
+}
 };
