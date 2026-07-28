@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { ReservationStatus } from '@prisma/client';
 
 // 1. Employee Management
-export const getEmployees = async (req: AuthenticatedRequest, res: Response) => {
+export const getEmployees = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const employees = await prisma.employee.findMany({
       orderBy: { name: 'asc' },
@@ -206,7 +206,7 @@ export const applyForLeave = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-export const getLeaveRequests = async (req: AuthenticatedRequest, res: Response) => {
+export const getLeaveRequests = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const leaves = await prisma.leave.findMany({
       include: {

@@ -4,7 +4,7 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 // 1. Inventory Controllers
-export const getInventory = async (req: AuthenticatedRequest, res: Response) => {
+export const getInventory = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const items = await prisma.inventoryItem.findMany({
       include: {
@@ -104,7 +104,7 @@ export const deleteInventoryItem = async (req: AuthenticatedRequest, res: Respon
   }
 };
 
-export const getLowStockAlerts = async (req: AuthenticatedRequest, res: Response) => {
+export const getLowStockAlerts = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     // Return all items where quantity is below or equal to the threshold alert value
     const items = await prisma.inventoryItem.findMany({
@@ -121,7 +121,7 @@ export const getLowStockAlerts = async (req: AuthenticatedRequest, res: Response
 };
 
 // 2. Supplier Controllers
-export const getSuppliers = async (req: AuthenticatedRequest, res: Response) => {
+export const getSuppliers = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const suppliers = await prisma.supplier.findMany({
       include: {

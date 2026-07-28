@@ -60,18 +60,13 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link href="/reservations" className="text-primary-light/70 hover:text-primary transition-colors">
-                Book A Table
+              <Link href="/my-orders" className="text-primary-light/70 hover:text-primary transition-colors">
+                My Orders
               </Link>
             </li>
             <li>
               <Link href="/dashboard" className="text-primary-light/70 hover:text-primary transition-colors">
                 Your Account
-              </Link>
-            </li>
-            <li>
-              <Link href="/tracking" className="text-primary-light/70 hover:text-primary transition-colors">
-                Track Order
               </Link>
             </li>
           </ul>

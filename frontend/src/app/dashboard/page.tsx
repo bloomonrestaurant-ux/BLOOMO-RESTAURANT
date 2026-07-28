@@ -80,6 +80,11 @@ export default function DashboardPage() {
         dispatch(setCredentials({ user: data.user, token: data.token }));
         setAuthPassword('');
         setAuthEmail('');
+        if (data.user.role === 'ADMIN') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/');
+        }
       }
     },
     onError: (err: any) => {

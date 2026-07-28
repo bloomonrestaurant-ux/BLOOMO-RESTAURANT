@@ -41,14 +41,14 @@ export default function Navigation() {
   const navLinks = [
     { label: 'Home', href: '/' },
     { label: 'Menu', href: '/menu' },
-    { label: 'Reservations', href: '/reservations' },
+    { label: 'My Orders', href: '/my-orders' },
   ];
 
   return (
     <header
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-bg-dark/80 backdrop-blur-lg border-b border-primary/20 py-3 shadow-lg'
+          ? 'glass-nav py-3 shadow-xl'
           : 'bg-transparent py-5'
       }`}
     >
@@ -118,13 +118,6 @@ export default function Navigation() {
             </Link>
           )}
 
-          <Link
-            href="/reservations"
-            className="glow-btn bg-gold-gradient text-bg-dark px-6 py-2 rounded text-sm font-bold tracking-wider hover:opacity-90 flex items-center space-x-1"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>BOOK TABLE</span>
-          </Link>
         </div>
 
         {/* Mobile Nav Button */}
@@ -196,13 +189,6 @@ export default function Navigation() {
                   </Link>
                 )}
 
-                <Link
-                  href="/reservations"
-                  className="bg-gold-gradient text-bg-dark text-center py-3 rounded font-bold tracking-wider text-sm flex items-center justify-center space-x-2"
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span>BOOK TABLE</span>
-                </Link>
               </div>
             </div>
           </motion.div>

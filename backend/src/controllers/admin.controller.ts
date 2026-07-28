@@ -3,7 +3,7 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { PaymentStatus } from '@prisma/client';
 
-export const getDashboardAnalytics = async (req: AuthenticatedRequest, res: Response) => {
+export const getDashboardAnalytics = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     // 1. Total Revenue (Sum of finalAmount from COMPLETED/paid orders)
     const revenueAggregate = await prisma.order.aggregate({
@@ -112,7 +112,7 @@ export const getDashboardAnalytics = async (req: AuthenticatedRequest, res: Resp
 };
 
 // Global Settings
-export const getSettings = async (req: AuthenticatedRequest, res: Response) => {
+export const getSettings = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const settings = await prisma.setting.findMany();
     return res.status(200).json({ settings });

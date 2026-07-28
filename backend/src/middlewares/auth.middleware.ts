@@ -71,3 +71,13 @@ export const restrictTo = (...roles: Role[]) => {
     next();
   };
 };
+
+export const requireAdmin = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  await protect(req, res, () => {
+    restrictTo('ADMIN')(req, res, next);
+  });
+};

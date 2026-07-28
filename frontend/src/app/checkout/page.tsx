@@ -154,7 +154,7 @@ export default function CheckoutPage() {
 
       dispatch(clearCart());
       setIsSubmitting(false);
-      router.push(`/tracking?orderId=${orderId}`);
+      router.push(`/my-orders?activeOrderId=${orderId}`);
     } catch (err: any) {
       console.error(err);
       setIsSubmitting(false);

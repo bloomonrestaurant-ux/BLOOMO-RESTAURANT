@@ -4,7 +4,7 @@ import prisma from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 // 1. Categories Controllers
-export const getCategories = async (req: AuthenticatedRequest, res: Response) => {
+export const getCategories = async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
       include: {

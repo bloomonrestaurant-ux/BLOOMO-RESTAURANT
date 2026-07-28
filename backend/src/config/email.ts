@@ -8,11 +8,16 @@ const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@yourdomain.com';
  * Sends a premium HTML email containing the verification OTP to the user.
  */
 export const sendOTPEmail = async (email: string, name: string, otp: string): Promise<any> => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('WARNING: RESEND_API_KEY is not defined. Email dispatch will be simulated in console.');
-    console.log(`\n========================================\n[SIMULATED EMAIL DISPATCH]\nTo: ${email} (${name})\nOTP Code: ${otp}\n========================================\n`);
-    return { id: 'mock-id' };
+  // Always log the OTP to the console in development for easier debugging and copying
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`\n========================================\n[DEVELOPMENT OTP LOG]\nTo: ${email} (${name})\nOTP Code: ${otp}\n========================================\n`);
   }
+
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_mock_key_for_compilation') {
+    console.warn('WARNING: RESEND_API_KEY is not defined or is a compilation mock. Email dispatch will be simulated in console.');
+    return { id: 'mock-id', simulated: true };
+  }
+
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -149,15 +154,27 @@ export const sendOTPEmail = async (email: string, name: string, otp: string): Pr
   `;
 
   try {
-    const data = await resend.emails.send({
+    const response = await resend.emails.send({
       from: EMAIL_FROM,
       to: email,
       subject: `Verify Your Account - Bloomon Family Restaurant`,
       html: htmlContent,
     });
-    return data;
-  } catch (error) {
+
+    if (response.error) {
+      throw response.error;
+    }
+
+    return response.data;
+  } catch (error: any) {
     console.error('Error sending email via Resend:', error);
+
+    // In local development, gracefully fall back to the console logs instead of blocking registration
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`WARNING: Resend failed to send email: ${error.message || error}. Falling back to simulated delivery since NODE_ENV is development.`);
+      return { id: 'mock-id', simulated: true };
+    }
+
     throw error;
   }
 };

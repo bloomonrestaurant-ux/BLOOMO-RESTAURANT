@@ -22,7 +22,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health Check Endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'success',
     message: 'Bloomon Family Restaurant API Server is running smoothly.',
@@ -42,7 +42,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Global Centralized Error Middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled Server Error:', err);
   res.status(500).json({
     status: 'error',

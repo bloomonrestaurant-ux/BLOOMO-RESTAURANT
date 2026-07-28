@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @theme {
   --color-primary: #D4AF37;
@@ -9,7 +10,7 @@
   --color-gold-border: rgba(212, 175, 55, 0.2);
 
   --font-display: "Playfair Display", Georgia, serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Poppins", system-ui, sans-serif;
 }
 
 @layer base {
@@ -25,6 +26,18 @@
     color: #F3E5AB;
     letter-spacing: 0.05em;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ── Glassmorphism Navbar ── */
+.glass-nav {
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
 }
 
 /* Custom premium elements & glassmorphism */
@@ -57,6 +70,15 @@
   background: linear-gradient(135deg, #F3E5AB 0%, #D4AF37 50%, #C5A02E 100%);
 }
 
+/* ── Lift Button Hover ── */
+.btn-lift {
+  transition: all 0.25s ease;
+}
+.btn-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.35);
+}
+
 .glow-btn {
   position: relative;
   overflow: hidden;
@@ -77,6 +99,26 @@
 
 .glow-btn:hover::after {
   left: 120%;
+}
+
+/* ── Menu Card Hover Scale ── */
+.menu-card {
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+.menu-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 20px 48px rgba(212, 175, 55, 0.2);
+}
+
+/* ── Image Zoom on Hover ── */
+.img-zoom {
+  overflow: hidden;
+}
+.img-zoom img, .img-zoom > div > img {
+  transition: transform 0.5s ease;
+}
+.img-zoom:hover img, .img-zoom:hover > div > img {
+  transform: scale(1.07);
 }
 
 /* Custom premium scrollbar */
@@ -109,4 +151,61 @@
 
 .pulse-gold {
   animation: goldPulse 2s infinite;
+}
+
+/* ── Loading Screen ── */
+@keyframes fadeOutLoader {
+  0% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+@keyframes scaleInLogo {
+  0% { opacity: 0; transform: scale(0.75); }
+  60% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { left: -60%; }
+  100% { left: 130%; }
+}
+
+.loader-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -60%;
+  width: 60%; height: 100%;
+  background: linear-gradient(to right, transparent, rgba(212,175,55,0.35), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+/* ── WhatsApp Float Button ── */
+.whatsapp-float {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  width: 56px;
+  height: 56px;
+  background: #25D366;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 24px rgba(37, 211, 102, 0.45);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.whatsapp-float:hover {
+  transform: scale(1.12) translateY(-3px);
+  box-shadow: 0 12px 32px rgba(37, 211, 102, 0.6);
+}
+
+/* ── Divider line ── */
+.gold-divider {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  margin: 0 auto;
 }

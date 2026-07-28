@@ -490,6 +490,7 @@ export const downloadInvoice = async (req: AuthenticatedRequest, res: Response) 
       .text('Thank you for dining with Bloomon Family Restaurant!', 50, 700, { align: 'center' });
 
     doc.end();
+    return;
   } catch (error) {
     console.error('Invoice print error:', error);
     return res.status(500).json({ message: 'Error generating PDF invoice', error });

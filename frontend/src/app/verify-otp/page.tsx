@@ -128,10 +128,13 @@ function VerifyOtpContent() {
 
       // Check verification flow
       if (purpose === 'register') {
-        // Log user in automatically
         dispatch(setCredentials({ user: response.data.user, token: response.data.token }));
         setTimeout(() => {
-          router.push('/dashboard');
+          if (response.data.user.role === 'ADMIN') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/');
+          }
         }, 1500);
       } else {
         // Password Reset flow -> save token and push to reset page
