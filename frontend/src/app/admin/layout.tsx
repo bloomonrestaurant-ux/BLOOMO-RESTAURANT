@@ -17,7 +17,7 @@ import {
   Search
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '@/store/slices/authSlice';
+import { logout } from '@/store/authSlice';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
