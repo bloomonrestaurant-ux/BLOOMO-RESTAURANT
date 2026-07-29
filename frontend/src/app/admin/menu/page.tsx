@@ -6,8 +6,7 @@ import {
   UtensilsCrossed, Tag, Clock, Flame, Star, ToggleLeft, ToggleRight, Loader2
 } from 'lucide-react';
 
-const API = 'http://localhost:5000/api/v1';
-
+import API from '@/services/api';
 interface Category {
   id: string;
   name: string;
@@ -33,14 +32,9 @@ interface MenuItem {
 
 const emptyForm = {
   name: '',
-  description: '',
   price: '',
-  discount: '0',
   categoryId: '',
   prepTime: '15',
-  calories: '',
-  ingredients: '',
-  imageUrl: '',
   availability: true,
 };
 
@@ -62,21 +56,18 @@ export default function AdminMenuPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const getToken = () => localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [menuRes, catRes] = await Promise.all([
-        fetch(`${API}/menu/items`),
-        fetch(`${API}/menu/categories`),
+        API.get('/menu/items'),
+        API.get('/menu/categories'),
       ]);
-      const menuData = await menuRes.json();
-      const catData = await catRes.json();
-      setItems(menuData.menuItems || []);
-      setCategories(catData.categories || []);
-    } catch {
-      showToast('Failed to load menu data', 'error');
+      setItems(menuRes.data.menuItems || []);
+      setCategories(catRes.data.categories || []);
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      showToast(`Failed to load menu data: ${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -94,14 +85,9 @@ export default function AdminMenuPage() {
     setEditItem(item);
     setForm({
       name: item.name,
-      description: item.description,
       price: String(item.price),
-      discount: String(item.discount),
       categoryId: item.categoryId,
       prepTime: String(item.prepTime),
-      calories: item.calories ? String(item.calories) : '',
-      ingredients: item.ingredients.join(', '),
-      imageUrl: item.imageUrl || '',
       availability: item.availability,
     });
     setShowModal(true);
@@ -112,29 +98,22 @@ export default function AdminMenuPage() {
     setSaving(true);
     const payload = {
       name: form.name,
-      description: form.description,
+      description: form.name, // Auto-fill description with name for backend compatibility
       price: parseFloat(form.price),
-      discount: parseFloat(form.discount || '0'),
+      discount: 0,
       categoryId: form.categoryId,
       prepTime: parseInt(form.prepTime || '15'),
-      calories: form.calories ? parseInt(form.calories) : undefined,
-      ingredients: form.ingredients.split(',').map(s => s.trim()).filter(Boolean),
-      imageUrl: form.imageUrl || undefined,
       availability: form.availability,
     };
 
     try {
-      const url = editItem
-        ? `${API}/menu/items/${editItem.id}`
-        : `${API}/menu/items`;
-      const method = editItem ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error();
-      showToast(editItem ? 'Menu item updated!' : 'Menu item created!');
+      if (editItem) {
+        await API.put(`/menu/items/${editItem.id}`, payload);
+        showToast('Item updated successfully');
+      } else {
+        await API.post('/menu/items', payload);
+        showToast('Item added successfully');
+      }
       setShowModal(false);
       fetchData();
     } catch {
@@ -147,11 +126,7 @@ export default function AdminMenuPage() {
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      const res = await fetch(`${API}/menu/items/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok) throw new Error();
+      await API.delete(`/menu/items/${id}`);
       showToast('Item deleted');
       setItems(prev => prev.filter(i => i.id !== id));
     } catch {
@@ -163,11 +138,7 @@ export default function AdminMenuPage() {
 
   const toggleAvailability = async (item: MenuItem) => {
     try {
-      await fetch(`${API}/menu/items/${item.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ availability: !item.availability }),
-      });
+      await API.put(`/menu/items/${item.id}`, { availability: !item.availability });
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, availability: !i.availability } : i));
     } catch {
       showToast('Failed to update availability', 'error');
@@ -175,8 +146,8 @@ export default function AdminMenuPage() {
   };
 
   const filtered = items.filter(item => {
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.category.name.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.category?.name?.toLowerCase().includes(search.toLowerCase());
     const matchCat = filterCat ? item.categoryId === filterCat : true;
     return matchSearch && matchCat;
   });
@@ -279,12 +250,6 @@ export default function AdminMenuPage() {
                           <div className="flex items-center gap-2 mt-0.5">
                             <Clock className="w-3 h-3 text-gray-600" />
                             <span className="text-xs text-gray-600">{item.prepTime} min</span>
-                            {item.calories && (
-                              <>
-                                <Flame className="w-3 h-3 text-gray-600" />
-                                <span className="text-xs text-gray-600">{item.calories} cal</span>
-                              </>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -293,15 +258,12 @@ export default function AdminMenuPage() {
                     <td className="px-6 py-4">
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full w-fit">
                         <Tag className="w-3 h-3" />
-                        {item.category.name}
+                        {item.category?.name || 'Uncategorized'}
                       </span>
                     </td>
                     {/* Price */}
                     <td className="px-6 py-4">
                       <p className="text-sm font-bold text-white">₹{item.price}</p>
-                      {item.discount > 0 && (
-                        <p className="text-xs text-green-400">{item.discount}% off</p>
-                      )}
                     </td>
                     {/* Rating */}
                     <td className="px-6 py-4">
@@ -382,19 +344,6 @@ export default function AdminMenuPage() {
                   />
                 </div>
 
-                {/* Description */}
-                <div className="sm:col-span-2">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Description *</label>
-                  <textarea
-                    required
-                    value={form.description}
-                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                    rows={3}
-                    placeholder="Describe the dish..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors resize-none"
-                  />
-                </div>
-
                 {/* Price */}
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Price (₹) *</label>
@@ -406,20 +355,6 @@ export default function AdminMenuPage() {
                     value={form.price}
                     onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors"
-                  />
-                </div>
-
-                {/* Discount */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Discount (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={form.discount}
-                    onChange={e => setForm(f => ({ ...f, discount: e.target.value }))}
-                    placeholder="0"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors"
                   />
                 </div>
@@ -452,43 +387,6 @@ export default function AdminMenuPage() {
                     value={form.prepTime}
                     onChange={e => setForm(f => ({ ...f, prepTime: e.target.value }))}
                     placeholder="15"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors"
-                  />
-                </div>
-
-                {/* Calories */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Calories</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.calories}
-                    onChange={e => setForm(f => ({ ...f, calories: e.target.value }))}
-                    placeholder="Optional"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors"
-                  />
-                </div>
-
-                {/* Image URL */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Image URL</label>
-                  <input
-                    type="text"
-                    value={form.imageUrl}
-                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder="https://..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors"
-                  />
-                </div>
-
-                {/* Ingredients */}
-                <div className="sm:col-span-2">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Ingredients (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={form.ingredients}
-                    onChange={e => setForm(f => ({ ...f, ingredients: e.target.value }))}
-                    placeholder="e.g. chicken, butter, cream, spices"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-primary/50 transition-colors"
                   />
                 </div>

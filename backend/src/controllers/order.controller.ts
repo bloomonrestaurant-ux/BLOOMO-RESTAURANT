@@ -330,17 +330,43 @@ export const getOrderById = async (req: AuthenticatedRequest, res: Response) => 
 
 export const getAdminOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { status } = req.query;
+    const { status, date, month, year } = req.query;
     const where: any = {};
     if (status) {
       where.status = status as OrderStatus;
     }
 
+    // Date filtering
+    if (date) {
+      // Specific date: YYYY-MM-DD
+      const d = new Date(date as string);
+      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+      where.createdAt = { gte: startOfDay, lt: endOfDay };
+    } else if (month !== undefined && year) {
+      // Month + Year filter (month is 0-indexed)
+      const m = parseInt(month as string, 10);
+      const y = parseInt(year as string, 10);
+      const startDate = new Date(y, m, 1);
+      const endDate = new Date(y, m + 1, 1);
+      where.createdAt = { gte: startDate, lt: endDate };
+    } else {
+      // Default: today's orders
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+      where.createdAt = { gte: startOfDay, lt: endOfDay };
+    }
+
     const orders = await prisma.order.findMany({
       where,
       include: {
-        user: { select: { name: true, phone: true } },
-        items: true,
+        user: { select: { name: true, phone: true, email: true } },
+        items: {
+          include: {
+            menuItem: { select: { name: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

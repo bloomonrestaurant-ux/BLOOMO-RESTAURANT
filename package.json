@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
     "cloudinary": "^2.10.0",
     "multer": "^2.2.0"
   },

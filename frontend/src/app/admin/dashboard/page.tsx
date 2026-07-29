@@ -1,80 +1,125 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useSelector } from 'react-redux';
+import API from '@/services/api';
 import {
   ShoppingBag,
   Users,
   TrendingUp,
   DollarSign,
-  ArrowUpRight,
-  ArrowDownRight,
   Clock,
   CheckCircle,
   XCircle,
   ChefHat,
+  Loader2,
+  CalendarDays,
 } from 'lucide-react';
 
-interface StatCard {
-  title: string;
-  value: string;
-  change: string;
-  positive: boolean;
-  icon: React.ElementType;
-  color: string;
-}
-
-interface RecentOrder {
-  id: string;
-  customer: string;
-  items: number;
-  total: string;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-  time: string;
-}
-
-const statusConfig = {
-  pending: { label: 'Pending', color: 'text-yellow-400 bg-yellow-400/10', icon: Clock },
-  preparing: { label: 'Preparing', color: 'text-blue-400 bg-blue-400/10', icon: ChefHat },
-  ready: { label: 'Ready', color: 'text-green-400 bg-green-400/10', icon: CheckCircle },
-  delivered: { label: 'Delivered', color: 'text-primary bg-primary/10', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'text-red-400 bg-red-400/10', icon: XCircle },
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  PENDING: { label: 'Pending', color: 'text-yellow-400 bg-yellow-400/10', icon: Clock },
+  CONFIRMED: { label: 'Confirmed', color: 'text-blue-400 bg-blue-400/10', icon: ChefHat },
+  PREPARING: { label: 'Preparing', color: 'text-blue-400 bg-blue-400/10', icon: ChefHat },
+  READY: { label: 'Ready', color: 'text-green-400 bg-green-400/10', icon: CheckCircle },
+  COMPLETED: { label: 'Completed', color: 'text-primary bg-primary/10', icon: CheckCircle },
+  DELIVERED: { label: 'Delivered', color: 'text-primary bg-primary/10', icon: CheckCircle },
+  CANCELLED: { label: 'Cancelled', color: 'text-red-400 bg-red-400/10', icon: XCircle },
 };
 
-const mockStats: StatCard[] = [
-  { title: 'Total Revenue', value: '₹1,24,500', change: '+12.5%', positive: true, icon: DollarSign, color: 'from-yellow-500/20 to-yellow-500/5' },
-  { title: 'Total Orders', value: '1,284', change: '+8.2%', positive: true, icon: ShoppingBag, color: 'from-blue-500/20 to-blue-500/5' },
-  { title: 'Total Customers', value: '3,920', change: '+5.1%', positive: true, icon: Users, color: 'from-purple-500/20 to-purple-500/5' },
-  { title: 'Avg. Order Value', value: '₹970', change: '-2.4%', positive: false, icon: TrendingUp, color: 'from-green-500/20 to-green-500/5' },
-];
-
-const mockOrders: RecentOrder[] = [
-  { id: '#ORD-001', customer: 'Arjun Sharma', items: 3, total: '₹1,250', status: 'preparing', time: '5 mins ago' },
-  { id: '#ORD-002', customer: 'Priya Nair', items: 2, total: '₹850', status: 'pending', time: '12 mins ago' },
-  { id: '#ORD-003', customer: 'Rohit Mehta', items: 5, total: '₹2,100', status: 'delivered', time: '28 mins ago' },
-  { id: '#ORD-004', customer: 'Sunita Rao', items: 1, total: '₹420', status: 'ready', time: '35 mins ago' },
-  { id: '#ORD-005', customer: 'Vikram Patel', items: 4, total: '₹1,680', status: 'cancelled', time: '1 hr ago' },
-];
-
 export default function AdminDashboardPage() {
-  const [mounted, setMounted] = useState(false);
+  const { isAuthenticated, user } = useSelector((state: any) => state.auth);
+  const isAuthorized = isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'MANAGER');
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Fetch today's analytics
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    queryKey: ['dashboardToday'],
+    queryFn: async () => {
+      const response = await API.get('/admin/analytics', { params: { today: 'true' } });
+      return response.data;
+    },
+    enabled: isAuthorized,
+    refetchInterval: 30000, // Auto-refresh every 30s
+  });
 
-  if (!mounted) return null;
+  // Fetch today's orders
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['dashboardTodayOrders'],
+    queryFn: async () => {
+      const response = await API.get('/admin/analytics/today-orders');
+      return response.data;
+    },
+    enabled: isAuthorized,
+    refetchInterval: 15000, // Auto-refresh every 15s
+  });
+
+  const todayRevenue = analytics?.revenue || 0;
+  const todayOrders = analytics?.orders || 0;
+  const todayCustomers = analytics?.customers || 0;
+  const avgOrderValue = todayOrders > 0 ? todayRevenue / todayOrders : 0;
+  const recentOrders: any[] = ordersData?.orders || [];
+
+  const todayStr = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const stats = [
+    {
+      title: "Today's Revenue",
+      value: `₹${Number(todayRevenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      icon: DollarSign,
+      color: 'from-yellow-500/20 to-yellow-500/5',
+    },
+    {
+      title: "Today's Orders",
+      value: String(todayOrders),
+      icon: ShoppingBag,
+      color: 'from-blue-500/20 to-blue-500/5',
+    },
+    {
+      title: "Today's Customers",
+      value: String(todayCustomers),
+      icon: Users,
+      color: 'from-purple-500/20 to-purple-500/5',
+    },
+    {
+      title: 'Avg. Order Value',
+      value: `₹${Number(avgOrderValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      icon: TrendingUp,
+      color: 'from-green-500/20 to-green-500/5',
+    },
+  ];
+
+  const getTimeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+    return `${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) > 1 ? 's' : ''} ago`;
+  };
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-display font-bold text-white tracking-wide">Dashboard</h1>
-        <p className="text-gray-500 mt-1 text-sm font-medium">Welcome back! Here's what's happening today.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-white tracking-wide">Dashboard</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <p className="text-gray-500 text-sm font-medium">{todayStr}</p>
+          </div>
+        </div>
+        {analyticsLoading && <Loader2 className="w-5 h-5 text-primary animate-spin" />}
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {mockStats.map((stat) => {
+        {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <div
@@ -84,11 +129,9 @@ export default function AdminDashboardPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{stat.title}</p>
-                  <p className="text-2xl font-bold text-white mt-2">{stat.value}</p>
-                  <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${stat.positive ? 'text-green-400' : 'text-red-400'}`}>
-                    {stat.positive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                    {stat.change} vs last month
-                  </div>
+                  <p className="text-2xl font-bold text-white mt-2">
+                    {analyticsLoading ? '—' : stat.value}
+                  </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
                   <Icon className="w-5 h-5 text-gray-400" />
@@ -102,37 +145,56 @@ export default function AdminDashboardPage() {
       {/* Recent Orders */}
       <div className="bg-[#111111] border border-white/5 rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-          <h2 className="text-base font-bold text-white">Recent Orders</h2>
-          <span className="text-xs text-primary font-semibold cursor-pointer hover:text-primary-light transition-colors">View All →</span>
+          <h2 className="text-base font-bold text-white">Today's Orders</h2>
+          <span className="text-xs text-gray-500 font-medium">
+            {recentOrders.length} order{recentOrders.length !== 1 ? 's' : ''} today
+          </span>
         </div>
 
-        <div className="divide-y divide-white/5">
-          {mockOrders.map((order) => {
-            const { label, color, icon: StatusIcon } = statusConfig[order.status];
-            return (
-              <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-white/2 transition-colors group">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold text-xs text-gray-400 group-hover:bg-white/10 transition-colors">
-                    {order.customer.charAt(0)}
+        {ordersLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+          </div>
+        ) : recentOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+            <ShoppingBag className="w-10 h-10 mb-3" />
+            <p className="font-semibold text-sm">No orders today yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {recentOrders.map((order: any) => {
+              const status = statusConfig[order.status] || statusConfig['PENDING'];
+              const StatusIcon = status.icon;
+              const itemCount = order.items?.length || order._count?.items || 0;
+              return (
+                <div key={order.id} className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold text-xs text-gray-400 group-hover:bg-white/10 transition-colors">
+                      {order.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{order.user?.name || 'Guest'}</p>
+                      <p className="text-xs text-gray-500">
+                        #{order.id.slice(-6).toUpperCase()} · {itemCount} item{itemCount !== 1 ? 's' : ''}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{order.customer}</p>
-                    <p className="text-xs text-gray-500">{order.id} · {order.items} item{order.items > 1 ? 's' : ''}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-6">
-                  <p className="text-sm font-bold text-white hidden sm:block">{order.total}</p>
-                  <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${color}`}>
-                    <StatusIcon className="w-3.5 h-3.5" />
-                    {label}
-                  </span>
-                  <p className="text-xs text-gray-600 hidden md:block">{order.time}</p>
+                  <div className="flex items-center gap-6">
+                    <p className="text-sm font-bold text-white hidden sm:block">
+                      ₹{Number(order.finalAmount || order.totalAmount || 0).toLocaleString('en-IN')}
+                    </p>
+                    <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${status.color}`}>
+                      <StatusIcon className="w-3.5 h-3.5" />
+                      {status.label}
+                    </span>
+                    <p className="text-xs text-gray-600 hidden md:block">{getTimeAgo(order.createdAt)}</p>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

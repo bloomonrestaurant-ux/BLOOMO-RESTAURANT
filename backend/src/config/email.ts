@@ -1,22 +1,23 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.BREVO_LOGIN,
+    pass: process.env.BREVO_SMTP_KEY,
   },
 });
 
 const EMAIL_FROM =
-  process.env.EMAIL_FROM || process.env.EMAIL_USER || "Bloomon Family Restaurant";
+  process.env.EMAIL_FROM || "bloomonrestaurant@gmail.com";
 
 export const sendOTPEmail = async (
   email: string,
   name: string,
   otp: string
 ): Promise<any> => {
-  // Development log
   if (process.env.NODE_ENV === "development") {
     console.log(`
 ========================================
@@ -125,7 +126,6 @@ font-size:12px;
 color:#9ca3af;
 }
 </style>
-
 </head>
 
 <body>
@@ -181,7 +181,7 @@ Warangal, Telangana, India
 
   try {
     const info = await transporter.sendMail({
-      from: EMAIL_FROM,
+      from: `"Bloomon Family Restaurant" <${EMAIL_FROM}>`,
       to: email,
       subject: "Verify Your Account - Bloomon Family Restaurant",
       html: htmlContent,
@@ -193,17 +193,8 @@ Warangal, Telangana, India
       success: true,
       messageId: info.messageId,
     };
-  } catch (error: any) {
-    console.error("Gmail SMTP Error:", error);
-
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Email sending failed in development mode.");
-      return {
-        success: false,
-        simulated: true,
-      };
-    }
-
+  } catch (error) {
+    console.error("Brevo SMTP Error:", error);
     throw error;
   }
 };

@@ -8,9 +8,6 @@ import {
   LayoutDashboard, 
   UtensilsCrossed, 
   PackageSearch, 
-  CalendarCheck, 
-  Users, 
-  LineChart, 
   Settings, 
   LogOut,
   Bell,
@@ -38,9 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Menu Management', href: '/admin/menu', icon: UtensilsCrossed },
     { name: 'Orders', href: '/admin/orders', icon: PackageSearch },
-    { name: 'Reservations', href: '/admin/reservations', icon: CalendarCheck },
-    { name: 'Customers', href: '/admin/customers', icon: Users },
-    { name: 'Analytics', href: '/admin/analytics', icon: LineChart },
+    { name: 'Coupons & Offers', href: '/admin/coupons', icon: Settings },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ];
 
