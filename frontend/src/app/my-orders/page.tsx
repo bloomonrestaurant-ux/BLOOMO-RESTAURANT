@@ -87,7 +87,8 @@ function MyOrdersContent() {
       alert('Invoice downloads are simulated in demo mode.');
       return;
     }
-    window.open(`http://localhost:5000/api/v1/orders/${id}/invoice`, '_blank');
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'https://bloomo-restaurant.onrender.com/api/v1';
+    window.open(`${baseURL}/orders/${id}/invoice`, '_blank');
   };
 
   const handleReorder = (order: any) => {
