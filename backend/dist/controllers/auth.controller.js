@@ -150,6 +150,14 @@ const login = async (req, res) => {
         if (!user.isVerified) {
             return res.status(403).json({ message: 'Please verify your email first.', email: user.email });
         }
+        if (user.email === process.env.ADMIN_EMAIL && user.role !== 'ADMIN') {
+            await db_1.default.user.update({ where: { email: user.email }, data: { role: 'ADMIN' } });
+            user.role = 'ADMIN';
+        }
+        else if (user.email !== process.env.ADMIN_EMAIL && user.role === 'ADMIN') {
+            await db_1.default.user.update({ where: { email: user.email }, data: { role: 'CUSTOMER' } });
+            user.role = 'CUSTOMER';
+        }
         const token = generateToken({ id: user.id, email: user.email, role: user.role });
         return res.status(200).json({
             message: 'Login successful',
@@ -238,9 +246,13 @@ const verifyOTP = async (req, res) => {
         }
         if (!user.isVerified) {
             // Flow 1: Registration Verification -> activate user and log them in
+            let roleToAssign = 'CUSTOMER';
+            if (user.email === process.env.ADMIN_EMAIL) {
+                roleToAssign = 'ADMIN';
+            }
             const activatedUser = await db_1.default.user.update({
                 where: { email },
-                data: { isVerified: true },
+                data: { isVerified: true, role: roleToAssign },
             });
             const token = generateToken({ id: activatedUser.id, email: activatedUser.email, role: activatedUser.role });
             return res.status(200).json({

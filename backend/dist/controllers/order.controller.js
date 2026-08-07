@@ -313,16 +313,43 @@ const getOrderById = async (req, res) => {
 exports.getOrderById = getOrderById;
 const getAdminOrders = async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, date, month, year } = req.query;
         const where = {};
         if (status) {
             where.status = status;
         }
+        // Date filtering
+        if (date) {
+            // Specific date: YYYY-MM-DD
+            const d = new Date(date);
+            const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+            const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+            where.createdAt = { gte: startOfDay, lt: endOfDay };
+        }
+        else if (month !== undefined && year) {
+            // Month + Year filter (month is 0-indexed)
+            const m = parseInt(month, 10);
+            const y = parseInt(year, 10);
+            const startDate = new Date(y, m, 1);
+            const endDate = new Date(y, m + 1, 1);
+            where.createdAt = { gte: startDate, lt: endDate };
+        }
+        else {
+            // Default: today's orders
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+            where.createdAt = { gte: startOfDay, lt: endOfDay };
+        }
         const orders = await db_1.default.order.findMany({
             where,
             include: {
-                user: { select: { name: true, phone: true } },
-                items: true,
+                user: { select: { name: true, phone: true, email: true } },
+                items: {
+                    include: {
+                        menuItem: { select: { name: true } },
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -394,7 +421,7 @@ const downloadInvoice = async (req, res) => {
         doc
             .fillColor('#D4AF37')
             .fontSize(20)
-            .text('BLOOMON ROYALE', 50, 50, { align: 'left' })
+            .text('BLOOMON FAMILY RESTAURANT', 50, 50, { align: 'left' })
             .fillColor('#333333')
             .fontSize(10)
             .text('Geesukonda Main Road, Dharmaram, Warangal', 50, 75)
@@ -452,8 +479,9 @@ const downloadInvoice = async (req, res) => {
             .font('Helvetica-Oblique')
             .fontSize(10)
             .fillColor('#999999')
-            .text('Thank you for dining with Bloomon Royale! Taste the Royal Heritage.', 50, 700, { align: 'center' });
+            .text('Thank you for dining with Bloomon Family Restaurant!', 50, 700, { align: 'center' });
         doc.end();
+        return;
     }
     catch (error) {
         console.error('Invoice print error:', error);

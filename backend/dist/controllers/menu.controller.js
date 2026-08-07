@@ -7,7 +7,7 @@ exports.addReview = exports.getWishlist = exports.toggleWishlist = exports.delet
 const zod_1 = require("zod");
 const db_1 = __importDefault(require("../config/db"));
 // 1. Categories Controllers
-const getCategories = async (req, res) => {
+const getCategories = async (_req, res) => {
     try {
         const categories = await db_1.default.category.findMany({
             include: {

@@ -22,10 +22,10 @@ app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 // Health Check Endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.status(200).json({
         status: 'success',
-        message: 'Bloomon Royale API Server is running smoothly.',
+        message: 'Bloomon Family Restaurant API Server is running smoothly.',
         timestamp: new Date().toISOString(),
     });
 });
@@ -39,7 +39,7 @@ app.use((req, res) => {
     });
 });
 // Global Centralized Error Middleware
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
     console.error('Unhandled Server Error:', err);
     res.status(500).json({
         status: 'error',
@@ -49,7 +49,7 @@ app.use((err, req, res, next) => {
 });
 const server = app.listen(PORT, () => {
     console.log(`========================================`);
-    console.log(` Bloomon Royale API Server successfully initiated.`);
+    console.log(` Bloomon Family Restaurant API Server successfully initiated.`);
     console.log(` Port Number: ${PORT}`);
     console.log(` Environment Mode: ${process.env.NODE_ENV || 'development'}`);
     console.log(` Active Endpoint: http://localhost:${PORT}/api/v1`);

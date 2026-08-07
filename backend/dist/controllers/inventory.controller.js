@@ -7,7 +7,7 @@ exports.deleteSupplier = exports.updateSupplier = exports.createSupplier = expor
 const zod_1 = require("zod");
 const db_1 = __importDefault(require("../config/db"));
 // 1. Inventory Controllers
-const getInventory = async (req, res) => {
+const getInventory = async (_req, res) => {
     try {
         const items = await db_1.default.inventoryItem.findMany({
             include: {
@@ -104,7 +104,7 @@ const deleteInventoryItem = async (req, res) => {
     }
 };
 exports.deleteInventoryItem = deleteInventoryItem;
-const getLowStockAlerts = async (req, res) => {
+const getLowStockAlerts = async (_req, res) => {
     try {
         // Return all items where quantity is below or equal to the threshold alert value
         const items = await db_1.default.inventoryItem.findMany({
@@ -120,7 +120,7 @@ const getLowStockAlerts = async (req, res) => {
 };
 exports.getLowStockAlerts = getLowStockAlerts;
 // 2. Supplier Controllers
-const getSuppliers = async (req, res) => {
+const getSuppliers = async (_req, res) => {
     try {
         const suppliers = await db_1.default.supplier.findMany({
             include: {

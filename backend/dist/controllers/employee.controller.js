@@ -8,7 +8,7 @@ const zod_1 = require("zod");
 const db_1 = __importDefault(require("../config/db"));
 const client_1 = require("@prisma/client");
 // 1. Employee Management
-const getEmployees = async (req, res) => {
+const getEmployees = async (_req, res) => {
     try {
         const employees = await db_1.default.employee.findMany({
             orderBy: { name: 'asc' },
@@ -197,7 +197,7 @@ const applyForLeave = async (req, res) => {
     }
 };
 exports.applyForLeave = applyForLeave;
-const getLeaveRequests = async (req, res) => {
+const getLeaveRequests = async (_req, res) => {
     try {
         const leaves = await db_1.default.leave.findMany({
             include: {

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restrictTo = exports.protect = void 0;
+exports.requireAdmin = exports.restrictTo = exports.protect = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = __importDefault(require("../config/db"));
 const protect = async (req, res, next) => {
@@ -51,3 +51,9 @@ const restrictTo = (...roles) => {
     };
 };
 exports.restrictTo = restrictTo;
+const requireAdmin = async (req, res, next) => {
+    await (0, exports.protect)(req, res, () => {
+        (0, exports.restrictTo)('ADMIN')(req, res, next);
+    });
+};
+exports.requireAdmin = requireAdmin;
