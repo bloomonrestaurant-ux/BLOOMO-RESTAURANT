@@ -19,11 +19,11 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     // Give Redux a moment to hydrate if needed
-    if (isAuthenticated && user?.role === 'ADMIN') {
+    if (isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'MANAGER')) {
       setAuthorized(true);
     } else {
       const timeout = setTimeout(() => {
-        if (!isAuthenticated || user?.role !== 'ADMIN') {
+        if (!isAuthenticated || (user?.role !== 'ADMIN' && user?.role !== 'MANAGER')) {
           setAuthorized(false);
           router.replace('/');
         } else {

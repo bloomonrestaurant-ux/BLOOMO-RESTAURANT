@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, Edit2, Trash2, X, Check, ChevronDown,
   UtensilsCrossed, Tag, Clock, Flame, Star, ToggleLeft, ToggleRight, Loader2
@@ -39,16 +40,13 @@ const emptyForm = {
 };
 
 export default function AdminMenuPage() {
-  const [items, setItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -56,24 +54,25 @@ export default function AdminMenuPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [menuRes, catRes] = await Promise.all([
-        API.get('/menu/items'),
-        API.get('/menu/categories'),
-      ]);
-      setItems(menuRes.data.menuItems || []);
-      setCategories(catRes.data.categories || []);
-    } catch (err: any) {
-      console.error('Fetch error:', err);
-      showToast(`Failed to load menu data: ${err.message}`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: menuData, isLoading: loadingItems } = useQuery({
+    queryKey: ['adminMenuItems'],
+    queryFn: async () => {
+      const response = await API.get('/menu/items');
+      return response.data;
+    },
+  });
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const { data: catData, isLoading: loadingCats } = useQuery({
+    queryKey: ['adminMenuCategories'],
+    queryFn: async () => {
+      const response = await API.get('/menu/categories');
+      return response.data;
+    },
+  });
+
+  const items: MenuItem[] = menuData?.menuItems || [];
+  const categories: Category[] = catData?.categories || [];
+  const loading = loadingItems || loadingCats;
 
   const openAdd = () => {
     setEditItem(null);
@@ -98,7 +97,7 @@ export default function AdminMenuPage() {
     setSaving(true);
     const payload = {
       name: form.name,
-      description: form.name, // Auto-fill description with name for backend compatibility
+      description: form.name,
       price: parseFloat(form.price),
       discount: 0,
       categoryId: form.categoryId,
@@ -115,7 +114,7 @@ export default function AdminMenuPage() {
         showToast('Item added successfully');
       }
       setShowModal(false);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ['adminMenuItems'] });
     } catch {
       showToast('Failed to save menu item', 'error');
     } finally {
@@ -123,27 +122,30 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
       await API.delete(`/menu/items/${id}`);
+    },
+    onSuccess: () => {
       showToast('Item deleted');
-      setItems(prev => prev.filter(i => i.id !== id));
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ['adminMenuItems'] });
+    },
+    onError: () => {
       showToast('Failed to delete item', 'error');
-    } finally {
-      setDeletingId(null);
     }
-  };
+  });
 
-  const toggleAvailability = async (item: MenuItem) => {
-    try {
+  const toggleMutation = useMutation({
+    mutationFn: async (item: MenuItem) => {
       await API.put(`/menu/items/${item.id}`, { availability: !item.availability });
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, availability: !i.availability } : i));
-    } catch {
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminMenuItems'] });
+    },
+    onError: () => {
       showToast('Failed to update availability', 'error');
     }
-  };
+  });
 
   const filtered = items.filter(item => {
     const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -275,7 +277,7 @@ export default function AdminMenuPage() {
                     {/* Status */}
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => toggleAvailability(item)}
+                        onClick={() => toggleMutation.mutate(item)}
                         className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${
                           item.availability
                             ? 'text-green-400 bg-green-400/10 hover:bg-green-400/20'
@@ -298,11 +300,11 @@ export default function AdminMenuPage() {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(item.id)}
-                          disabled={deletingId === item.id}
+                          onClick={() => deleteMutation.mutate(item.id)}
+                          disabled={deleteMutation.isPending && deleteMutation.variables === item.id}
                           className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 disabled:opacity-50"
                         >
-                          {deletingId === item.id
+                          {deleteMutation.isPending && deleteMutation.variables === item.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <Trash2 className="w-4 h-4" />
                           }
