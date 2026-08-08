@@ -44,7 +44,7 @@ npx prisma generate
 npx prisma db push
 npm run dev
 ```
-*Note: Seeding script automatically runs on first push or you can run `npx prisma db seed` to insert default menus (Chicken Biryani, Paneer Masala, etc.) and admin login (`admin@bloomon.com` / `Admin@123`).*
+*Note: Seeding script automatically runs on first push or you can run `npx prisma db seed` to insert default menus (Chicken Biryani, Paneer Masala, etc.) and admin login (`bloomonrestaurant@gmail.com` / `Admin@123`).*
 
 ### 3. Frontend Booting
 Navigate to `/frontend/`, install packages, and boot the Next.js portal:

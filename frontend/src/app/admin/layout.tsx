@@ -108,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="flex items-center space-x-4 pl-8 border-l border-white/10 cursor-pointer group">
                 <div className="text-right hidden md:block">
                   <p className="text-sm font-bold text-white group-hover:text-primary transition-colors">{user?.name || 'Administrator'}</p>
-                  <p className="text-[11px] font-medium tracking-wide text-gray-500">{user?.email || 'admin@bloomon.com'}</p>
+                  <p className="text-[11px] font-medium tracking-wide text-gray-500">{user?.email || 'bloomonrestaurant@gmail.com'}</p>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-yellow-200 flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.3)] group-hover:shadow-[0_0_25px_rgba(212,175,55,0.5)] transition-shadow duration-300">
                   <span className="text-bg-dark font-black text-lg">{user?.name?.charAt(0).toUpperCase() || 'A'}</span>
