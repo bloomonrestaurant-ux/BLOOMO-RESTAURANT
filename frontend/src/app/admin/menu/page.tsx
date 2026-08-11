@@ -1,722 +1,636 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Search, Edit2, Trash2, X, Check, ChevronDown,
-  UtensilsCrossed, Loader2, Layers, Flame, Save, GripVertical
+  Plus, Search, Edit2, Trash2, X, Loader2, Save,
+  UtensilsCrossed, ImagePlus, CheckCircle, AlertCircle, Upload
 } from 'lucide-react';
 import API from '@/services/api';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-interface SimpleItem {
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Category {
   id: string;
   name: string;
+  description?: string;
+  image?: string;
+}
+
+interface DbMenuItem {
+  id: string;
+  name: string;
+  description: string;
   price: number;
+  discount: number;
+  availability: boolean;
+  imageUrl?: string;
+  categoryId: string;
+  prepTime: number;
+  calories?: number;
+  ingredients: string[];
+  rating?: number;
+  category?: { name: string };
 }
 
-interface MultiSizeItem {
-  id: string;
+interface ItemForm {
   name: string;
-  single: number;
-  half: number;
-  family: number;
+  description: string;
+  price: string;
+  discount: string;
+  categoryId: string;
+  prepTime: string;
+  calories: string;
+  ingredients: string;
+  availability: boolean;
+  imageUrl: string;
 }
 
-interface MenuSection {
-  id: string;
-  title: string;
-  type: 'simple' | 'biryani';
-  items: SimpleItem[] | MultiSizeItem[];
+const emptyForm = (): ItemForm => ({
+  name: '',
+  description: '',
+  price: '',
+  discount: '0',
+  categoryId: '',
+  prepTime: '15',
+  calories: '',
+  ingredients: '',
+  availability: true,
+  imageUrl: '',
+});
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
+  return (
+    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-semibold backdrop-blur-sm border animate-in slide-in-from-bottom-4 ${
+      type === 'success'
+        ? 'bg-green-950/90 border-green-500/30 text-green-300'
+        : 'bg-red-950/90 border-red-500/30 text-red-300'
+    }`}>
+      {type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+      {msg}
+    </div>
+  );
 }
 
-// ─── Default data (synced with frontend menu) ───────────────────────────────
-const defaultSections: MenuSection[] = [
-  {
-    id: 'sec-veg',
-    title: 'VEG',
-    type: 'simple',
-    items: [
-      { id: 'r1', name: 'Chapathi', price: 20 },
-      { id: 'r2', name: 'Roti', price: 30 },
-      { id: 'r3', name: 'Parota', price: 30 },
-      { id: 'r4', name: 'Roomali Roti', price: 40 },
-    ] as SimpleItem[],
-  },
-  {
-    id: 'sec-nonveg',
-    title: 'NON-VEG',
-    type: 'biryani',
-    items: [
-      { id: 'b1', name: 'Chicken', single: 190, half: 300, family: 450 },
-      { id: 'b2', name: 'Chicken Mutton', single: 190, half: 300, family: 450 },
-      { id: 'b3', name: 'Fish', single: 220, half: 350, family: 550 },
-      { id: 'b4', name: 'Prawns', single: 260, half: 400, family: 600 },
-      { id: 'b5', name: 'Mutton', single: 230, half: 350, family: 600 },
-    ] as MultiSizeItem[],
-  },
-];
-
-// ─── Helper to generate unique IDs ──────────────────────────────────────────
-let counter = Date.now();
-const genId = () => `item-${++counter}`;
-const genSectionId = () => `sec-${++counter}`;
-
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminMenuPage() {
-  const [sections, setSections] = useState<MenuSection[]>(defaultSections);
-  const [activeTab, setActiveTab] = useState<'sections' | 'legacy'>('sections');
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-
-  // ── Modal state for adding/editing sections
-  const [showSectionModal, setShowSectionModal] = useState(false);
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [sectionForm, setSectionForm] = useState({ title: '', type: 'simple' as 'simple' | 'biryani' });
-
-  // ── Modal state for adding/editing items
-  const [showItemModal, setShowItemModal] = useState(false);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
-  const [itemForm, setItemForm] = useState({ name: '', price: '', single: '', half: '', family: '' });
-
-  // ── Search
   const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState('all');
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ItemForm>(emptyForm());
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>('');
+
+  // Delete confirm
+  const [deleteTarget, setDeleteTarget] = useState<DbMenuItem | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Legacy API queries (for backward compatibility)
-  const queryClient = useQueryClient();
-  const { data: menuData, isLoading: loadingItems } = useQuery({
+  // ── Data Fetching ──────────────────────────────────────────────────────────
+  const { data: categoriesData } = useQuery({
+    queryKey: ['adminCategories'],
+    queryFn: async () => {
+      const res = await API.get('/menu/categories');
+      return res.data.categories as Category[];
+    },
+  });
+
+  const { data: itemsData, isLoading } = useQuery({
     queryKey: ['adminMenuItems'],
     queryFn: async () => {
-      const response = await API.get('/menu/items');
-      return response.data;
+      const res = await API.get('/menu/items');
+      return res.data.menuItems as DbMenuItem[];
     },
-    enabled: activeTab === 'legacy',
   });
 
-  const { data: catData, isLoading: loadingCats } = useQuery({
-    queryKey: ['adminMenuCategories'],
-    queryFn: async () => {
-      const response = await API.get('/menu/categories');
-      return response.data;
-    },
-    enabled: activeTab === 'legacy',
+  const categories = categoriesData || [];
+  const allItems = itemsData || [];
+
+  // ── Filtered Items ──────────────────────────────────────────────────────────
+  const filteredItems = allItems.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase());
+    const matchesCat = filterCat === 'all' || item.categoryId === filterCat;
+    return matchesSearch && matchesCat;
   });
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION MANAGEMENT
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ── Image Upload ────────────────────────────────────────────────────────────
+  const handleImageFile = async (file: File) => {
+    if (!file) return;
+    setImageUploading(true);
+    const localPreview = URL.createObjectURL(file);
+    setImagePreview(localPreview);
 
-  const openAddSection = () => {
-    setEditingSectionId(null);
-    setSectionForm({ title: '', type: 'simple' });
-    setShowSectionModal(true);
-  };
-
-  const openEditSection = (section: MenuSection) => {
-    setEditingSectionId(section.id);
-    setSectionForm({ title: section.title, type: section.type });
-    setShowSectionModal(true);
-  };
-
-  const saveSection = () => {
-    if (!sectionForm.title.trim()) {
-      showToast('Section title is required', 'error');
-      return;
-    }
-
-    if (editingSectionId) {
-      // Edit existing section
-      setSections(prev =>
-        prev.map(s =>
-          s.id === editingSectionId
-            ? { ...s, title: sectionForm.title.toUpperCase(), type: sectionForm.type }
-            : s
-        )
-      );
-      showToast('Section updated successfully');
-    } else {
-      // Add new section
-      const newSection: MenuSection = {
-        id: genSectionId(),
-        title: sectionForm.title.toUpperCase(),
-        type: sectionForm.type,
-        items: [],
-      };
-      setSections(prev => [...prev, newSection]);
-      showToast('Section added successfully');
-    }
-    setShowSectionModal(false);
-  };
-
-  const deleteSection = (sectionId: string) => {
-    if (!confirm('Delete this entire section and all its items?')) return;
-    setSections(prev => prev.filter(s => s.id !== sectionId));
-    showToast('Section deleted');
-  };
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ITEM MANAGEMENT
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const openAddItem = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (!section) return;
-    setTargetSectionId(sectionId);
-    setEditingItemId(null);
-    if (section.type === 'simple') {
-      setItemForm({ name: '', price: '', single: '', half: '', family: '' });
-    } else {
-      setItemForm({ name: '', price: '', single: '', half: '', family: '' });
-    }
-    setShowItemModal(true);
-  };
-
-  const openEditItem = (sectionId: string, item: SimpleItem | MultiSizeItem) => {
-    setTargetSectionId(sectionId);
-    setEditingItemId(item.id);
-    const section = sections.find(s => s.id === sectionId);
-    if (section?.type === 'simple') {
-      const simpleItem = item as SimpleItem;
-      setItemForm({ name: simpleItem.name, price: String(simpleItem.price), single: '', half: '', family: '' });
-    } else {
-      const multiItem = item as MultiSizeItem;
-      setItemForm({
-        name: multiItem.name,
-        price: '',
-        single: String(multiItem.single),
-        half: String(multiItem.half),
-        family: String(multiItem.family),
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await API.post('/upload/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+      if (res.data.success) {
+        setForm(prev => ({ ...prev, imageUrl: res.data.imageUrl }));
+        showToast('Image uploaded successfully!');
+      } else {
+        showToast('Image upload failed', 'error');
+      }
+    } catch {
+      showToast('Image upload failed', 'error');
+    } finally {
+      setImageUploading(false);
     }
-    setShowItemModal(true);
   };
 
-  const saveItem = () => {
-    if (!itemForm.name.trim()) {
-      showToast('Item name is required', 'error');
+  // ── Create / Update ─────────────────────────────────────────────────────────
+  const saveMutation = useMutation({
+    mutationFn: async (data: ItemForm) => {
+      const payload = {
+        name: data.name.trim(),
+        description: data.description.trim(),
+        price: parseFloat(data.price),
+        discount: parseFloat(data.discount) || 0,
+        categoryId: data.categoryId,
+        prepTime: parseInt(data.prepTime) || 15,
+        calories: data.calories ? parseInt(data.calories) : undefined,
+        ingredients: data.ingredients ? data.ingredients.split(',').map(s => s.trim()).filter(Boolean) : [],
+        availability: data.availability,
+        imageUrl: data.imageUrl || undefined,
+      };
+
+      if (editingId) {
+        return API.put(`/menu/items/${editingId}`, payload);
+      } else {
+        return API.post('/menu/items', payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminMenuItems'] });
+      showToast(editingId ? 'Item updated!' : 'Item created and visible on menu!');
+      closeModal();
+    },
+    onError: (err: any) => {
+      showToast(err?.response?.data?.message || 'Failed to save item', 'error');
+    },
+  });
+
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => API.delete(`/menu/items/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminMenuItems'] });
+      showToast('Item deleted');
+      setDeleteTarget(null);
+    },
+    onError: () => showToast('Failed to delete item', 'error'),
+  });
+
+  // ── Modal helpers ───────────────────────────────────────────────────────────
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setImagePreview('');
+    setShowModal(true);
+  };
+
+  const openEdit = (item: DbMenuItem) => {
+    setEditingId(item.id);
+    setForm({
+      name: item.name,
+      description: item.description,
+      price: String(item.price),
+      discount: String(item.discount),
+      categoryId: item.categoryId,
+      prepTime: String(item.prepTime),
+      calories: item.calories ? String(item.calories) : '',
+      ingredients: item.ingredients?.join(', ') || '',
+      availability: item.availability,
+      imageUrl: item.imageUrl || '',
+    });
+    setImagePreview(item.imageUrl || '');
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setForm(emptyForm());
+    setImagePreview('');
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.price || !form.categoryId) {
+      showToast('Name, price and category are required', 'error');
       return;
     }
-
-    const section = sections.find(s => s.id === targetSectionId);
-    if (!section) return;
-
-    if (section.type === 'simple') {
-      const price = parseFloat(itemForm.price);
-      if (isNaN(price) || price <= 0) {
-        showToast('Valid price is required', 'error');
-        return;
-      }
-
-      if (editingItemId) {
-        setSections(prev =>
-          prev.map(s =>
-            s.id === targetSectionId
-              ? { ...s, items: (s.items as SimpleItem[]).map(it => it.id === editingItemId ? { ...it, name: itemForm.name, price } : it) }
-              : s
-          )
-        );
-        showToast('Item updated');
-      } else {
-        const newItem: SimpleItem = { id: genId(), name: itemForm.name, price };
-        setSections(prev =>
-          prev.map(s =>
-            s.id === targetSectionId
-              ? { ...s, items: [...(s.items as SimpleItem[]), newItem] }
-              : s
-          )
-        );
-        showToast('Item added');
-      }
-    } else {
-      const single = parseFloat(itemForm.single);
-      const half = parseFloat(itemForm.half);
-      const family = parseFloat(itemForm.family);
-      if ([single, half, family].some(v => isNaN(v) || v <= 0)) {
-        showToast('All three prices (Single, Half, Family) are required', 'error');
-        return;
-      }
-
-      if (editingItemId) {
-        setSections(prev =>
-          prev.map(s =>
-            s.id === targetSectionId
-              ? { ...s, items: (s.items as MultiSizeItem[]).map(it => it.id === editingItemId ? { ...it, name: itemForm.name, single, half, family } : it) }
-              : s
-          )
-        );
-        showToast('Item updated');
-      } else {
-        const newItem: MultiSizeItem = { id: genId(), name: itemForm.name, single, half, family };
-        setSections(prev =>
-          prev.map(s =>
-            s.id === targetSectionId
-              ? { ...s, items: [...(s.items as MultiSizeItem[]), newItem] }
-              : s
-          )
-        );
-        showToast('Item added');
-      }
+    if (isNaN(parseFloat(form.price)) || parseFloat(form.price) <= 0) {
+      showToast('Enter a valid price', 'error');
+      return;
     }
-    setShowItemModal(false);
+    saveMutation.mutate(form);
   };
 
-  const deleteItem = (sectionId: string, itemId: string) => {
-    setSections(prev =>
-      prev.map(s =>
-        s.id === sectionId
-          ? { ...s, items: s.items.filter((it) => it.id !== itemId) as SimpleItem[] | MultiSizeItem[] }
-          : s
-      ) as MenuSection[]
-    );
-    showToast('Item deleted');
-  };
-
-  // ── Filtered sections (search)
-  const filteredSections = sections.map(section => ({
-    ...section,
-    items: section.items.filter((item: SimpleItem | MultiSizeItem) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      section.title.toLowerCase().includes(search.toLowerCase())
-    ) as SimpleItem[] | MultiSizeItem[],
-  })).filter(section =>
-    section.items.length > 0 || section.title.toLowerCase().includes(search.toLowerCase())
-  ) as MenuSection[];
-
-  // ── Target section info for item modal
-  const targetSection = sections.find(s => s.id === targetSectionId);
+  const getCategoryName = (catId: string) =>
+    categories.find(c => c.id === catId)?.name || '—';
 
   return (
-    <div className="space-y-6">
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300 ${
-          toast.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-400' : 'bg-red-500/20 border border-red-500/30 text-red-400'
-        }`}>
-          {toast.type === 'success' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-          {toast.msg}
-        </div>
-      )}
+    <div className="space-y-6 relative">
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
 
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-wide">Menu Management</h1>
-          <p className="text-gray-500 mt-1 text-sm font-medium">
-            {sections.length} sections · {sections.reduce((acc, s) => acc + s.items.length, 0)} total items
+          <h1 className="text-2xl font-display font-bold text-white tracking-wide flex items-center gap-3">
+            <UtensilsCrossed className="w-6 h-6 text-primary" />
+            Menu Management
+          </h1>
+          <p className="text-gray-500 text-xs mt-1 font-medium">
+            {allItems.length} items in database · Changes appear instantly for all users
           </p>
         </div>
         <button
-          onClick={openAddSection}
-          className="flex items-center gap-2 px-5 py-3 font-bold text-sm rounded-xl hover:opacity-90 transition-all duration-300 shadow-lg"
-          style={{
-            background: 'linear-gradient(135deg, #FFB74D 0%, #E65100 100%)',
-            color: '#3E2723',
-          }}
+          onClick={openAdd}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-yellow-300 text-bg-dark font-bold text-sm rounded-xl hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all duration-300"
         >
           <Plus className="w-4 h-4" />
-          Add Section
+          Add New Item
         </button>
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('sections')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'sections'
-              ? 'text-white shadow-lg'
-              : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-          style={activeTab === 'sections' ? { background: 'linear-gradient(135deg, #E65100 0%, #BF360C 100%)' } : {}}
+      {/* ── Filters ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 w-64">
+          <Search className="w-4 h-4 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search items..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="bg-transparent text-sm text-white outline-none w-full placeholder-gray-500"
+          />
+        </div>
+        <select
+          value={filterCat}
+          onChange={e => setFilterCat(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-300 outline-none"
         >
-          <Layers className="w-4 h-4" />
-          Menu Sections
-        </button>
-        <button
-          onClick={() => setActiveTab('legacy')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'legacy'
-              ? 'text-white shadow-lg'
-              : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-          style={activeTab === 'legacy' ? { background: 'linear-gradient(135deg, #E65100 0%, #BF360C 100%)' } : {}}
-        >
-          <UtensilsCrossed className="w-4 h-4" />
-          Legacy DB Items
-        </button>
+          <option value="all">All Categories</option>
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 flex-1 focus-within:border-orange-500/50 transition-colors">
-        <Search className="w-4 h-4 text-gray-500" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search menu items..."
-          className="bg-transparent outline-none text-sm text-white placeholder-gray-600 w-full"
-        />
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SECTIONS TAB                                                       */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'sections' && (
-        <div className="space-y-6">
-          {filteredSections.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-gray-600">
-              <UtensilsCrossed className="w-12 h-12 mb-3" />
-              <p className="font-semibold">No sections found</p>
-              <button onClick={openAddSection} className="mt-4 px-5 py-2 rounded-lg text-sm font-bold" style={{ background: 'rgba(230, 81, 0, 0.15)', color: '#FFB74D', border: '1px solid rgba(255, 143, 0, 0.25)' }}>
-                + Create First Section
-              </button>
-            </div>
-          ) : (
-            filteredSections.map(section => (
-              <div key={section.id} className="bg-[#111111] border border-white/5 rounded-2xl overflow-hidden">
-                {/* Section Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/5"
-                  style={{ background: 'linear-gradient(90deg, rgba(230, 81, 0, 0.06) 0%, transparent 100%)' }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                      background: 'linear-gradient(135deg, #E65100 0%, #BF360C 100%)',
-                    }}>
-                      <Flame className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white font-display tracking-wide">{section.title}</h3>
-                      <span className="text-[10px] text-gray-500 uppercase tracking-widest font-sans">
-                        {section.type === 'biryani' ? 'Multi-size pricing' : 'Simple pricing'} · {section.items.length} items
+      {/* ── Table ───────────────────────────────────────────────────────── */}
+      <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-gray-500 gap-3">
+            <UtensilsCrossed className="w-12 h-12 opacity-30" />
+            <p className="text-sm font-medium">No menu items found</p>
+            <button onClick={openAdd} className="text-primary text-xs hover:underline">Add your first item →</button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5 text-[11px] tracking-widest text-gray-500 uppercase">
+                  <th className="text-left px-6 py-4">Item</th>
+                  <th className="text-left px-4 py-4">Category</th>
+                  <th className="text-left px-4 py-4">Price</th>
+                  <th className="text-left px-4 py-4">Status</th>
+                  <th className="text-right px-6 py-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((item, i) => (
+                  <tr
+                    key={item.id}
+                    className={`border-b border-white/5 hover:bg-white/3 transition-colors ${i % 2 === 0 ? '' : 'bg-white/[0.02]'}`}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-10 h-10 rounded-lg object-cover border border-white/10"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                            <UtensilsCrossed className="w-4 h-4 text-gray-600" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-white">{item.name}</p>
+                          <p className="text-xs text-gray-500 truncate max-w-[200px]">{item.description}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                        {item.category?.name || getCategoryName(item.categoryId)}
                       </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openAddItem(section.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
-                      style={{ background: 'rgba(230, 81, 0, 0.15)', color: '#FFB74D', border: '1px solid rgba(255, 143, 0, 0.2)' }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Item
-                    </button>
-                    <button
-                      onClick={() => openEditSection(section)}
-                      className="p-2 rounded-lg text-gray-400 hover:text-orange-400 hover:bg-orange-400/10 transition-all"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteSection(section.id)}
-                      className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+                    </td>
+                    <td className="px-4 py-4 text-white font-bold">
+                      ₹{item.price}
+                      {item.discount > 0 && (
+                        <span className="ml-2 text-xs text-green-400 font-medium">-{item.discount}% off</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        item.availability
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                      }`}>
+                        {item.availability ? 'Available' : 'Unavailable'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEdit(item)}
+                          className="p-2 rounded-lg hover:bg-primary/10 text-gray-400 hover:text-primary transition-colors"
+                          title="Edit item"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(item)}
+                          className="p-2 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-                {/* Section Items Table */}
-                {section.items.length === 0 ? (
-                  <div className="py-12 text-center text-gray-600 text-sm font-sans">
-                    No items yet.{' '}
-                    <button onClick={() => openAddItem(section.id)} className="text-orange-400 hover:underline">
-                      Add the first item →
-                    </button>
-                  </div>
-                ) : section.type === 'simple' ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/5 text-left">
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">#</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Item Name</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Price</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest w-[120px]">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {(section.items as SimpleItem[]).map((item, idx) => (
-                          <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="px-6 py-3.5 text-sm text-gray-500 font-sans">{idx + 1}</td>
-                            <td className="px-6 py-3.5 text-sm font-semibold text-white font-sans">{item.name}</td>
-                            <td className="px-6 py-3.5">
-                              <span className="text-sm font-bold" style={{ color: '#FFB74D' }}>Rs. {item.price}/-</span>
-                            </td>
-                            <td className="px-6 py-3.5">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => openEditItem(section.id, item)}
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-orange-400 hover:bg-orange-400/10 transition-all"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => deleteItem(section.id, item.id)}
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/5 text-left">
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Item</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest text-center">Single</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest text-center">Half</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest text-center">Family</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-widest w-[120px]">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {(section.items as MultiSizeItem[]).map((item) => (
-                          <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="px-6 py-3.5 text-sm font-semibold text-white font-sans">{item.name}</td>
-                            <td className="px-6 py-3.5 text-center">
-                              <span className="text-sm font-bold" style={{ color: '#FFB74D' }}>{item.single}/-</span>
-                            </td>
-                            <td className="px-6 py-3.5 text-center">
-                              <span className="text-sm font-bold" style={{ color: '#FFB74D' }}>{item.half}/-</span>
-                            </td>
-                            <td className="px-6 py-3.5 text-center">
-                              <span className="text-sm font-bold" style={{ color: '#FFB74D' }}>{item.family}/-</span>
-                            </td>
-                            <td className="px-6 py-3.5">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => openEditItem(section.id, item)}
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-orange-400 hover:bg-orange-400/10 transition-all"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => deleteItem(section.id, item.id)}
-                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* LEGACY TAB (existing DB items)                                     */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'legacy' && (
-        <div className="bg-[#111111] border border-white/5 rounded-2xl overflow-hidden">
-          {loadingItems || loadingCats ? (
-            <div className="flex items-center justify-center py-24">
-              <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
-            </div>
-          ) : (
-            <div className="py-12 text-center text-gray-500 font-sans text-sm">
-              <UtensilsCrossed className="w-10 h-10 mx-auto mb-3 text-gray-600" />
-              <p>Legacy database items are managed through the existing API.</p>
-              <p className="text-xs text-gray-600 mt-1">Use the &quot;Menu Sections&quot; tab for the new menu management.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SECTION MODAL                                                      */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {showSectionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSectionModal(false)} />
-          <div className="relative bg-[#111111] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-              <h2 className="text-lg font-bold text-white">{editingSectionId ? 'Edit Section' : 'Add New Section'}</h2>
-              <button onClick={() => setShowSectionModal(false)} className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-colors">
+      {/* ── Add / Edit Modal ─────────────────────────────────────────────── */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <h2 className="font-display font-bold text-white text-lg">
+                {editingId ? 'Edit Menu Item' : 'Add New Menu Item'}
+              </h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
-              {/* Section Title */}
+            {/* Modal body */}
+            <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+
+              {/* Image Upload */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Section Title *</label>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">
+                  Item Image
+                </label>
+                <div
+                  className="relative w-full h-40 rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/40 transition-colors overflow-hidden group"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {imagePreview ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-bold">
+                        <Upload className="w-4 h-4" />
+                        Change Image
+                      </div>
+                    </>
+                  ) : imageUploading ? (
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  ) : (
+                    <>
+                      <ImagePlus className="w-8 h-8 text-gray-600" />
+                      <p className="text-xs text-gray-500 font-medium">Click to upload image</p>
+                      <p className="text-[10px] text-gray-600">PNG, JPG, WEBP up to 5MB</p>
+                    </>
+                  )}
+                </div>
                 <input
-                  type="text"
-                  value={sectionForm.title}
-                  onChange={e => setSectionForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. STARTERS, DRINKS, CURRIES"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => { if (e.target.files?.[0]) handleImageFile(e.target.files[0]); }}
                 />
+                {imageUploading && (
+                  <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Uploading to Cloudinary...
+                  </p>
+                )}
               </div>
 
-              {/* Section Type */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Pricing Type *</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSectionForm(f => ({ ...f, type: 'simple' }))}
-                    className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all border ${
-                      sectionForm.type === 'simple'
-                        ? 'border-orange-500/50 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
-                    }`}
-                    style={sectionForm.type === 'simple' ? { background: 'rgba(230, 81, 0, 0.15)' } : {}}
+              {/* Name & Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Item Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Chicken Biryani"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Category *</label>
+                  <select
+                    required
+                    value={form.categoryId}
+                    onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 transition-colors"
                   >
-                    💰 Simple Price
-                    <p className="text-[10px] text-gray-500 mt-1">One price per item</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSectionForm(f => ({ ...f, type: 'biryani' }))}
-                    className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all border ${
-                      sectionForm.type === 'biryani'
-                        ? 'border-orange-500/50 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
-                    }`}
-                    style={sectionForm.type === 'biryani' ? { background: 'rgba(230, 81, 0, 0.15)' } : {}}
-                  >
-                    📊 Multi-Size
-                    <p className="text-[10px] text-gray-500 mt-1">Single / Half / Family</p>
-                  </button>
+                    <option value="">Select category</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              {/* Description */}
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Description *</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={form.description}
+                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Short description of the dish..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 resize-none transition-colors"
+                />
+              </div>
+
+              {/* Price, Discount, Prep Time, Calories */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={form.price}
+                    onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
+                    placeholder="190"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Discount (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={form.discount}
+                    onChange={e => setForm(p => ({ ...p, discount: e.target.value }))}
+                    placeholder="0"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Prep Time (min)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.prepTime}
+                    onChange={e => setForm(p => ({ ...p, prepTime: e.target.value }))}
+                    placeholder="15"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Calories</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.calories}
+                    onChange={e => setForm(p => ({ ...p, calories: e.target.value }))}
+                    placeholder="680"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Ingredients */}
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">
+                  Ingredients <span className="text-gray-600 normal-case font-normal">(comma separated)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.ingredients}
+                  onChange={e => setForm(p => ({ ...p, ingredients: e.target.value }))}
+                  placeholder="chicken, basmati rice, saffron, spices"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                />
+              </div>
+
+              {/* Availability toggle */}
+              <div className="flex items-center justify-between p-4 bg-white/3 rounded-xl border border-white/5">
+                <div>
+                  <p className="text-sm font-bold text-white">Item Availability</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Toggle to show/hide from the public menu</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, availability: !p.availability }))}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
+                    form.availability ? 'bg-green-500' : 'bg-gray-700'
+                  }`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${
+                    form.availability ? 'translate-x-6' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Actions */}
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowSectionModal(false)}
-                  className="flex-1 px-5 py-3 rounded-xl bg-white/5 text-gray-400 font-semibold text-sm hover:bg-white/10 transition-colors"
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-white/20 text-sm font-semibold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={saveSection}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-colors"
-                  style={{ background: 'linear-gradient(135deg, #FFB74D 0%, #E65100 100%)', color: '#3E2723' }}
+                  type="submit"
+                  disabled={saveMutation.isPending || imageUploading}
+                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-primary to-yellow-300 text-bg-dark font-bold text-sm flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all disabled:opacity-60"
                 >
-                  <Save className="w-4 h-4" />
-                  {editingSectionId ? 'Save Changes' : 'Create Section'}
+                  {saveMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Save className="w-4 h-4" /> {editingId ? 'Update Item' : 'Create Item'}</>
+                  )}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* ITEM MODAL                                                         */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {showItemModal && targetSection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowItemModal(false)} />
-          <div className="relative bg-[#111111] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-              <div>
-                <h2 className="text-lg font-bold text-white">{editingItemId ? 'Edit Item' : 'Add Item'}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Section: {targetSection.title}</p>
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#111] border border-red-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-400" />
               </div>
-              <button onClick={() => setShowItemModal(false)} className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <div>
+                <h3 className="font-bold text-white text-sm">Delete Item?</h3>
+                <p className="text-xs text-gray-500 mt-0.5">This action cannot be undone.</p>
+              </div>
             </div>
-
-            <div className="p-6 space-y-5">
-              {/* Item Name */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Item Name *</label>
-                <input
-                  type="text"
-                  value={itemForm.name}
-                  onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder={targetSection.type === 'biryani' ? 'e.g. Chicken, Fish, Prawns' : 'e.g. Chapathi, Naan'}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
-                />
-              </div>
-
-              {/* Pricing Fields */}
-              {targetSection.type === 'simple' ? (
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Price (Rs.) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={itemForm.price}
-                    onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))}
-                    placeholder="e.g. 30"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
-                  />
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Single *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={itemForm.single}
-                      onChange={e => setItemForm(f => ({ ...f, single: e.target.value }))}
-                      placeholder="190"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Half *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={itemForm.half}
-                      onChange={e => setItemForm(f => ({ ...f, half: e.target.value }))}
-                      placeholder="300"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Family *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={itemForm.family}
-                      onChange={e => setItemForm(f => ({ ...f, family: e.target.value }))}
-                      placeholder="450"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setShowItemModal(false)}
-                  className="flex-1 px-5 py-3 rounded-xl bg-white/5 text-gray-400 font-semibold text-sm hover:bg-white/10 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveItem}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-colors"
-                  style={{ background: 'linear-gradient(135deg, #FFB74D 0%, #E65100 100%)', color: '#3E2723' }}
-                >
-                  <Check className="w-4 h-4" />
-                  {editingItemId ? 'Save Changes' : 'Add Item'}
-                </button>
-              </div>
+            <p className="text-sm text-gray-400 mb-6">
+              Are you sure you want to delete <strong className="text-white">{deleteTarget.name}</strong>? It will be removed from the menu immediately.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white text-sm font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                Delete
+              </button>
             </div>
           </div>
         </div>

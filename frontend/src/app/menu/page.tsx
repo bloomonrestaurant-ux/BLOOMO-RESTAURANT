@@ -10,6 +10,7 @@ import { ShoppingBag, X, Plus, Minus, ChevronRight, Utensils, Heart, Eye } from 
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
 // ─── Menu Types ─────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -100,8 +101,36 @@ export default function MenuPage() {
   const cartTotal = cartItems.reduce((sum, item) => sum + (item.price - item.discount) * item.quantity, 0);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Fetch live menu items from DB
+  const { data: dbItems, isLoading } = useQuery({
+    queryKey: ['publicMenuItems'],
+    queryFn: async () => {
+      const res = await API.get('/menu/items');
+      return res.data.menuItems as any[];
+    }
+  });
+
+  // Combine or format items
+  const menuItems: MenuItem[] = React.useMemo(() => {
+    if (dbItems && dbItems.length > 0) {
+      return dbItems.filter(db => db.availability).map(db => ({
+        id: db.id,
+        name: db.name,
+        category: db.category?.name === 'Veg' ? 'Veg' : 'Non-Veg',
+        isMultiSize: false,
+        price: db.price,
+        description: db.description,
+        calories: db.calories ? `${db.calories} kcal` : 'N/A',
+        time: db.prepTime ? `${db.prepTime} mins` : '15 mins',
+        rating: db.rating ? String(db.rating.toFixed(1)) : '4.5',
+        image: db.imageUrl || '/image/default.jpg'
+      }));
+    }
+    return fallbackMenuItems;
+  }, [dbItems]);
+
   // Filter items based on selected category
-  const filteredItems = fallbackMenuItems.filter(item => 
+  const filteredItems = menuItems.filter(item => 
     filter === 'All' ? true : item.category === filter
   );
 
@@ -201,7 +230,12 @@ export default function MenuPage() {
 
       {/* ── Grid Menu ──────────────────────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-6 mt-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item) => {
             const isVeg = item.category === 'Veg';
             const currentSize = selectedSizes[item.id] || 'single';
@@ -306,7 +340,8 @@ export default function MenuPage() {
               </motion.div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── Cart Sidebar ──────────────────────────────────────────────────── */}
