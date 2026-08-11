@@ -23,6 +23,9 @@ interface DbMenuItem {
   price: number;
   discount: number;
   availability: boolean;
+  isMultiSize: boolean;
+  halfPrice?: number;
+  familyPrice?: number;
   imageUrl?: string;
   categoryId: string;
   prepTime: number;
@@ -42,6 +45,9 @@ interface ItemForm {
   calories: string;
   ingredients: string;
   availability: boolean;
+  isMultiSize: boolean;
+  halfPrice: string;
+  familyPrice: string;
   imageUrl: string;
 }
 
@@ -55,6 +61,9 @@ const emptyForm = (): ItemForm => ({
   calories: '',
   ingredients: '',
   availability: true,
+  isMultiSize: false,
+  halfPrice: '',
+  familyPrice: '',
   imageUrl: '',
 });
 
@@ -163,6 +172,9 @@ export default function AdminMenuPage() {
         calories: data.calories ? parseInt(data.calories) : undefined,
         ingredients: data.ingredients ? data.ingredients.split(',').map(s => s.trim()).filter(Boolean) : [],
         availability: data.availability,
+        isMultiSize: data.isMultiSize,
+        halfPrice: data.isMultiSize && data.halfPrice ? parseFloat(data.halfPrice) : null,
+        familyPrice: data.isMultiSize && data.familyPrice ? parseFloat(data.familyPrice) : null,
         imageUrl: data.imageUrl || undefined,
       };
 
@@ -213,6 +225,9 @@ export default function AdminMenuPage() {
       calories: item.calories ? String(item.calories) : '',
       ingredients: item.ingredients?.join(', ') || '',
       availability: item.availability,
+      isMultiSize: item.isMultiSize || false,
+      halfPrice: item.halfPrice ? String(item.halfPrice) : '',
+      familyPrice: item.familyPrice ? String(item.familyPrice) : '',
       imageUrl: item.imageUrl || '',
     });
     setImagePreview(item.imageUrl || '');
@@ -535,6 +550,55 @@ export default function AdminMenuPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
                   />
                 </div>
+              </div>
+
+              {/* Multi-Size Pricing */}
+              <div className="flex flex-col gap-4 p-4 bg-white/3 rounded-xl border border-white/5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-white">Multi-Size Pricing</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Enable if this item comes in Single, Half, and Family sizes.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, isMultiSize: !p.isMultiSize }))}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
+                      form.isMultiSize ? 'bg-primary' : 'bg-gray-700'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${
+                      form.isMultiSize ? 'translate-x-6' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+                {form.isMultiSize && (
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Half Price (₹)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={form.halfPrice}
+                        onChange={e => setForm(p => ({ ...p, halfPrice: e.target.value }))}
+                        placeholder="300"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Family Price (₹)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={form.familyPrice}
+                        onChange={e => setForm(p => ({ ...p, familyPrice: e.target.value }))}
+                        placeholder="450"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50 placeholder-gray-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Ingredients */}

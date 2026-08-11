@@ -117,12 +117,15 @@ export default function MenuPage() {
         id: db.id,
         name: db.name,
         category: db.category?.name === 'Veg' ? 'Veg' : 'Non-Veg',
-        isMultiSize: false,
-        price: db.price,
+        isMultiSize: db.isMultiSize || false,
+        single: db.price ? Number(db.price) : undefined,
+        half: db.halfPrice ? Number(db.halfPrice) : undefined,
+        family: db.familyPrice ? Number(db.familyPrice) : undefined,
+        price: db.price ? Number(db.price) : undefined,
         description: db.description,
         calories: db.calories ? `${db.calories} kcal` : 'N/A',
         time: db.prepTime ? `${db.prepTime} mins` : '15 mins',
-        rating: db.rating ? String(db.rating.toFixed(1)) : '4.5',
+        rating: db.rating ? Number(db.rating).toFixed(1) : '4.5',
         image: db.imageUrl || '/image/default.jpg'
       }));
     }

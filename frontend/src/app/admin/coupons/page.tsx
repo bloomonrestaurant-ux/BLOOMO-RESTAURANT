@@ -34,6 +34,7 @@ const emptyCouponForm = {
   value: '',
   minOrderAmount: '',
   expiryDate: '',
+  noExpiry: false,
 };
 
 const emptyDailyItemForm = {
@@ -85,6 +86,10 @@ export default function AdminCouponsPage() {
 
   // ─── Create Coupon ─────────────────────
   const createCoupon = async () => {
+    if (!couponForm.code || !couponForm.value || (!couponForm.expiryDate && !couponForm.noExpiry)) {
+      showToast('Please fill all required fields (Code, Value, Expiry Date)', 'error');
+      return;
+    }
     setSavingCoupon(true);
     try {
       await API.post('/admin/coupons', {
@@ -92,14 +97,14 @@ export default function AdminCouponsPage() {
         discountType: couponForm.discountType,
         value: parseFloat(couponForm.value),
         minOrderAmount: parseFloat(couponForm.minOrderAmount || '0'),
-        expiryDate: new Date(couponForm.expiryDate).toISOString(),
+        expiryDate: couponForm.noExpiry ? new Date('2099-12-31T23:59:59.999Z').toISOString() : new Date(couponForm.expiryDate).toISOString(),
       });
       showToast('Coupon created successfully!');
       setShowCouponModal(false);
       setCouponForm(emptyCouponForm);
       queryClient.invalidateQueries({ queryKey: ['adminCoupons'] });
-    } catch {
-      showToast('Failed to create coupon', 'error');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to create coupon', 'error');
     } finally {
       setSavingCoupon(false);
     }
@@ -128,6 +133,10 @@ export default function AdminCouponsPage() {
 
   // ─── Create Daily Item ─────────────────────
   const createDailyItem = async () => {
+    if (!dailyForm.name || !dailyForm.quantity) {
+      showToast('Please fill all required fields (Name, Quantity)', 'error');
+      return;
+    }
     setSavingDaily(true);
     try {
       await API.post('/admin/daily-items', {
@@ -439,12 +448,24 @@ export default function AdminCouponsPage() {
 
               {/* Expiry Date */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 block">Expiry Date *</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest block">Expiry Date *</label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-400 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={couponForm.noExpiry}
+                      onChange={(e) => setCouponForm(f => ({ ...f, noExpiry: e.target.checked, expiryDate: '' }))}
+                      className="accent-primary"
+                    />
+                    No Expiry
+                  </label>
+                </div>
                 <input
                   type="date"
                   value={couponForm.expiryDate}
+                  disabled={couponForm.noExpiry}
                   onChange={(e) => setCouponForm(f => ({ ...f, expiryDate: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-colors"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -457,8 +478,8 @@ export default function AdminCouponsPage() {
                 </button>
                 <button
                   onClick={createCoupon}
-                  disabled={savingCoupon || !couponForm.code || !couponForm.value || !couponForm.expiryDate}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-bg-dark font-bold text-sm hover:bg-primary-light transition-colors disabled:opacity-70"
+                  disabled={savingCoupon}
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-bg-dark font-bold text-sm hover:bg-primary-light transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {savingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Create Coupon
@@ -541,8 +562,8 @@ export default function AdminCouponsPage() {
                 </button>
                 <button
                   onClick={createDailyItem}
-                  disabled={savingDaily || !dailyForm.name || !dailyForm.quantity}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-bg-dark font-bold text-sm hover:bg-primary-light transition-colors disabled:opacity-70"
+                  disabled={savingDaily}
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-bg-dark font-bold text-sm hover:bg-primary-light transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {savingDaily ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Add Item

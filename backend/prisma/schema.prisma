@@ -109,6 +109,9 @@ model MenuItem {
   calories     Int?
   ingredients  String[]
   rating       Decimal     @default(5.0) @db.Decimal(2, 1)
+  isMultiSize  Boolean     @default(false)
+  halfPrice    Decimal?    @db.Decimal(10, 2)
+  familyPrice  Decimal?    @db.Decimal(10, 2)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   orderItems   OrderItem[]
