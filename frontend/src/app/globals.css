@@ -209,3 +209,79 @@
   background: linear-gradient(90deg, transparent, #D4AF37, transparent);
   margin: 0 auto;
 }
+
+/* ── Brown & Orange Food Theme ── */
+:root {
+  --color-food-brown: #5C3D2E;
+  --color-food-brown-light: #8B6914;
+  --color-food-brown-dark: #3E2723;
+  --color-food-orange: #E65100;
+  --color-food-orange-light: #FF8F00;
+  --color-food-orange-warm: #F57C00;
+  --color-food-cream: #FFF8E1;
+  --color-food-beige: #F5E6D0;
+}
+
+.bg-food-gradient {
+  background: linear-gradient(135deg, #3E2723 0%, #5C3D2E 40%, #4E342E 100%);
+}
+
+.bg-food-card {
+  background: rgba(62, 39, 35, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 143, 0, 0.15);
+}
+
+.bg-food-card:hover {
+  border-color: rgba(255, 143, 0, 0.35);
+  box-shadow: 0 8px 32px rgba(230, 81, 0, 0.12);
+}
+
+.text-food-gradient {
+  background: linear-gradient(135deg, #FFB74D 0%, #E65100 50%, #BF360C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.food-section-divider {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #E65100, transparent);
+  margin: 0 auto;
+}
+
+/* Menu table styling */
+.menu-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.menu-table th {
+  background: rgba(230, 81, 0, 0.15);
+  color: #FFB74D;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 143, 0, 0.2);
+}
+
+.menu-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+  transition: background 0.2s ease;
+}
+
+.menu-table tr:hover td {
+  background: rgba(255, 143, 0, 0.06);
+}
+
+.menu-table .price-cell {
+  color: #FFB74D;
+  font-weight: 700;
+  font-family: var(--font-sans);
+}

@@ -6,7 +6,7 @@ import { RootState } from '@/store';
 import { setCredentials, updateWallet } from '@/store/authSlice';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import API from '@/services/api';
-import { User, Wallet, Award, History, Heart, Key, Loader, ShieldCheck, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { User, Wallet, Award, History, Heart, Key, Loader, ShieldCheck, Mail, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -32,6 +32,7 @@ export default function DashboardPage() {
 
   // Wallet recharge states
   const [rechargeAmount, setRechargeAmount] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // 1. Fetch complete profile (orders history + wishlists)
   const { data: profileData, isLoading: profileLoading } = useQuery({
@@ -267,13 +268,21 @@ export default function DashboardPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full bg-bg-dark border border-primary/25 rounded pl-10 pr-3 py-2.5 text-primary-light focus:outline-none"
+                    className="w-full bg-bg-dark border border-primary/25 rounded pl-10 pr-10 py-2.5 text-primary-light focus:outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primary/60 hover:text-primary transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 

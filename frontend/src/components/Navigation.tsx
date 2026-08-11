@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
@@ -42,6 +43,7 @@ export default function Navigation() {
     { label: 'Home', href: '/' },
     { label: 'Menu', href: '/menu' },
     { label: 'My Orders', href: '/my-orders' },
+    { label: 'Book a Private Table', href: '/reservations' },
   ];
 
   return (
@@ -54,9 +56,17 @@ export default function Navigation() {
     >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <span className="font-display text-2xl font-bold tracking-widest text-gold-gradient">
-            BLOOMON FAMILY RESTAURANT
+        <Link href="/" className="flex items-center space-x-3">
+          <Image
+            src="/image/logo01.png"
+            alt="Bloomon Family Restaurant Logo"
+            width={44}
+            height={44}
+            className="rounded-full object-cover"
+            priority
+          />
+          <span className="font-display text-lg md:text-2xl font-bold tracking-widest text-gold-gradient">
+            BLOOMON
           </span>
         </Link>
 

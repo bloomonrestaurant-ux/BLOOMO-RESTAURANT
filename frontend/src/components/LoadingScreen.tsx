@@ -54,33 +54,28 @@ export default function LoadingScreen() {
           gap: '0.75rem',
         }}
       >
-        {/* Gold emblem ring */}
+        {/* Gold emblem ring with logo */}
         <div
           style={{
-            width: 80,
-            height: 80,
+            width: 100,
+            height: 100,
             borderRadius: '50%',
             border: '2px solid #D4AF37',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 0 32px rgba(212,175,55,0.35)',
+            overflow: 'hidden',
           }}
         >
-          {/* Bloomon leaf SVG */}
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M20 5 C10 5, 5 15, 20 22 C35 15, 30 5, 20 5Z"
-              fill="#D4AF37"
-              opacity="0.9"
-            />
-            <path
-              d="M20 22 C10 29, 5 39, 20 35 C35 39, 30 29, 20 22Z"
-              fill="#C5A02E"
-              opacity="0.8"
-            />
-            <line x1="20" y1="5" x2="20" y2="37" stroke="#F3E5AB" strokeWidth="1" opacity="0.6" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/image/logo01.png"
+            alt="Bloomon Family Restaurant Logo"
+            width={96}
+            height={96}
+            style={{ objectFit: 'cover', borderRadius: '50%' }}
+          />
         </div>
 
         {/* Restaurant name */}

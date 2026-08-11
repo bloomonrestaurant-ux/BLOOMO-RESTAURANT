@@ -45,8 +45,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         
         {/* Sidebar */}
         <aside className="w-64 bg-[#111111] border-r border-white/5 flex flex-col z-20 shadow-2xl shadow-black">
-          <div className="h-20 flex items-center px-8 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
-            <span className="text-2xl font-display font-bold text-transparent bg-clip-text bg-gold-gradient tracking-widest">
+          <div className="h-20 flex items-center px-8 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/image/logo01.png"
+              alt="Bloomon Logo"
+              width={38}
+              height={38}
+              className="rounded-full object-cover"
+            />
+            <span className="text-xl font-display font-bold text-transparent bg-clip-text bg-gold-gradient tracking-widest">
               BLOOMON
             </span>
           </div>

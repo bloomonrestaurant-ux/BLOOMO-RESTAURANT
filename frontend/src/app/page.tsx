@@ -14,50 +14,47 @@ import { addItem } from '@/store/cartSlice';
 
 const mostOrdered = [
   {
-    name: 'Bloomon Special Chicken Biryani',
-    price: '₹350',
+    name: 'Chicken Biryani',
+    price: '₹190',
     tag: '🔥 #1 Best Seller',
     image: '/image/biryani.jpg',
   },
   {
-    name: 'Royale Paneer Butter Masala',
-    price: '₹280',
+    name: 'Chapathi',
+    price: '₹20',
     tag: '⭐ Fan Favourite',
-    image: '/image/paneer.jpg',
+    image: '/image/default.jpg',
   },
   {
-    name: 'Wood-Fired Cheese Pizza',
-    price: '₹450',
-    tag: '🍕 Trending',
-    image: '/image/pizza.jpg',
+    name: 'Mutton Biryani',
+    price: '₹230',
+    tag: 'Trending',
+    image: '/image/mutton.jpg',
   },
   {
-    name: 'Ghee Podi Idli',
-    price: '₹120',
-    tag: '🌿 South Indian',
-    image: '/image/idli.jpg',
+    name: 'Roti',
+    price: '₹30',
+    tag: '🌿 Veg',
+    image: '/image/default.jpg',
   },
   {
-    name: 'Imperial Truffle Burger',
-    price: '₹250',
-    tag: '🍔 Must Try',
-    image: '/image/burger.jpg',
+    name: 'Prawns Biryani',
+    price: '₹260',
+    tag: '🦐 Special',
+    image: '/image/default.jpg',
   },
 ];
 
 const menuItems = [
-  { id: 'm1',  name: 'Chicken Biryani',      price: '₹350', category: 'Non-Veg',     image: '/image/biryani.jpg'    },
-  { id: 'm2',  name: 'Paneer Butter Masala', price: '₹280', category: 'Veg',          image: '/image/paneer.jpg'     },
-  { id: 'm3',  name: 'Cheese Pizza',          price: '₹450', category: 'Pizza',        image: '/image/pizza.jpg'      },
-  { id: 'm4',  name: 'Ghee Podi Idli',        price: '₹120', category: 'South Indian', image: '/image/idli.jpg'       },
-  { id: 'm5',  name: 'Truffle Burger',        price: '₹250', category: 'Burger',       image: '/image/burger.jpg'     },
-  { id: 'm6',  name: 'Saffron Kulfi',         price: '₹150', category: 'Desserts',     image: '/image/kulfi.jpg'      },
-  { id: 'm7',  name: 'Veg Manchurian',        price: '₹180', category: 'Chinese',      image: '/image/manchurian.jpg' },
-  { id: 'm8',  name: 'Mutton Curry',          price: '₹380', category: 'Non-Veg',     image: '/image/mutton.jpg'     },
-  { id: 'm9',  name: 'Masala Dosa',           price: '₹110', category: 'South Indian', image: '/image/dosa.jpg'       },
-  { id: 'm10', name: 'Chicken 65',            price: '₹220', category: 'Starters',    image: '/image/chicken65.jpg'  },
-  { id: 'm11', name: 'Veg Spring Rolls',      price: '₹160', category: 'Starters',    image: '/image/springroll.jpg' },
-  { id: 'm12', name: 'Cold Coffee',           price: '₹90',  category: 'Beverages',   image: '/image/coldcoffee.jpg' },
+  { id: 'm1',  name: 'Chapathi',            price: '₹20',  category: 'Veg',       image: '/image/default.jpg' },
+  { id: 'm2',  name: 'Roti',                price: '₹30',  category: 'Veg',       image: '/image/default.jpg' },
+  { id: 'm3',  name: 'Parota',              price: '₹30',  category: 'Veg',       image: '/image/default.jpg' },
+  { id: 'm4',  name: 'Roomali Roti',        price: '₹40',  category: 'Veg',       image: '/image/default.jpg' },
+  { id: 'm5',  name: 'Chicken Biryani',     price: '₹190', category: 'Non-Veg',   image: '/image/biryani.jpg' },
+  { id: 'm6',  name: 'Chicken Mutton Biryani', price: '₹190', category: 'Non-Veg',   image: '/image/mutton.jpg' },
+  { id: 'm7',  name: 'Fish Biryani',        price: '₹220', category: 'Non-Veg',   image: '/image/default.jpg' },
+  { id: 'm8',  name: 'Prawns Biryani',      price: '₹260', category: 'Non-Veg',   image: '/image/default.jpg' },
+  { id: 'm9',  name: 'Mutton Biryani',      price: '₹230', category: 'Non-Veg',   image: '/image/mutton.jpg' },
 ];
 
 // Real-style Google reviews from Bloomon Family Restaurant, Warangal
@@ -203,27 +200,7 @@ export default function Home() {
           >
             Indulge in our wood-fired pizzas, slow-cooked royal curries, and signature tandoori delights amidst a premium garden ambiance.
           </motion.p>
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6"
-          >
-            <Link
-              href="/menu"
-              className="btn-lift glow-btn w-full sm:w-auto bg-gold-gradient text-bg-dark px-8 py-3.5 rounded text-sm font-bold tracking-widest hover:opacity-95 shadow-xl transition-all flex items-center justify-center space-x-2"
-            >
-              <Compass className="w-4 h-4" />
-              <span>EXPLORE GOURMET MENU</span>
-            </Link>
-            <Link
-              href="/reservations"
-              className="btn-lift w-full sm:w-auto border border-primary text-primary hover:bg-primary hover:text-bg-dark px-8 py-3.5 rounded text-sm font-bold tracking-widest transition-all duration-300 flex items-center justify-center space-x-2"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>BOOK A PRIVATE TABLE</span>
-            </Link>
-          </motion.div>
+
         </div>
 
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-primary flex flex-col items-center animate-bounce">

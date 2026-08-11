@@ -165,10 +165,11 @@ export const login = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(403).json({ message: 'Please verify your email first.', email: user.email });
     }
 
-    if (user.email === process.env.ADMIN_EMAIL && user.role !== 'ADMIN') {
+    const adminEmail = process.env.ADMIN_EMAIL || 'bloomonrestaurant@gmail.com';
+    if (user.email === adminEmail && user.role !== 'ADMIN') {
       await prisma.user.update({ where: { email: user.email }, data: { role: 'ADMIN' } });
       user.role = 'ADMIN' as any;
-    } else if (user.email !== process.env.ADMIN_EMAIL && user.role === 'ADMIN') {
+    } else if (user.email !== adminEmail && user.role === 'ADMIN') {
       await prisma.user.update({ where: { email: user.email }, data: { role: 'CUSTOMER' } });
       user.role = 'CUSTOMER' as any;
     }

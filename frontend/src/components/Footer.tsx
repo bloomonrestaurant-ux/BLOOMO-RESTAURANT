@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Phone, MapPin, Mail, Clock, ShieldCheck } from 'lucide-react';
 
 export default function Footer() {
@@ -8,9 +9,18 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
         {/* About Section */}
         <div className="space-y-4">
-          <h3 className="font-display text-2xl font-bold text-gold-gradient">
-            BLOOMON FAMILY RESTAURANT
-          </h3>
+          <div className="flex items-center space-x-3 mb-1">
+            <Image
+              src="/image/logo01.png"
+              alt="Bloomon Family Restaurant Logo"
+              width={50}
+              height={50}
+              className="rounded-full object-cover"
+            />
+            <h3 className="font-display text-xl font-bold text-gold-gradient">
+              BLOOMON FAMILY RESTAURANT
+            </h3>
+          </div>
           <p className="text-sm font-sans text-primary-light/70 leading-relaxed">
             Reimagining fine dining in Warangal. Indulge in wood-fired delights, legacy tandoors, and luxury garden setups crafted for the royal family experiences.
           </p>
