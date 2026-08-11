@@ -268,9 +268,9 @@ export default function AdminMenuPage() {
     setSections(prev =>
       prev.map(s =>
         s.id === sectionId
-          ? { ...s, items: s.items.filter((it: SimpleItem | MultiSizeItem) => it.id !== itemId) }
+          ? { ...s, items: s.items.filter((it) => it.id !== itemId) as SimpleItem[] | MultiSizeItem[] }
           : s
-      )
+      ) as MenuSection[]
     );
     showToast('Item deleted');
   };
@@ -281,10 +281,10 @@ export default function AdminMenuPage() {
     items: section.items.filter((item: SimpleItem | MultiSizeItem) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       section.title.toLowerCase().includes(search.toLowerCase())
-    ),
+    ) as SimpleItem[] | MultiSizeItem[],
   })).filter(section =>
     section.items.length > 0 || section.title.toLowerCase().includes(search.toLowerCase())
-  );
+  ) as MenuSection[];
 
   // ── Target section info for item modal
   const targetSection = sections.find(s => s.id === targetSectionId);
