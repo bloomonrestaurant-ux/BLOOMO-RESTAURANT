@@ -268,12 +268,6 @@ export default function DashboardPage() {
     forgotPasswordMutation.mutate();
   };
 
-  const handleWalletSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rechargeAmount || isNaN(parseFloat(rechargeAmount))) return;
-    rechargeWalletMutation.mutate();
-  };
-
   // Auth tab container
   if (!isAuthenticated) {
     return (
