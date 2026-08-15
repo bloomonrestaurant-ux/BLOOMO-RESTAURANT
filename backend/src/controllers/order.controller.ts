@@ -579,6 +579,10 @@ export const downloadInvoice = async (req: AuthenticatedRequest, res: Response) 
 // Customer Cancel Order
 export const cancelUserOrder = async (req: AuthenticatedRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { orderId } = req.params;
     const { reason } = req.body;
 
@@ -611,14 +615,6 @@ export const cancelUserOrder = async (req: AuthenticatedRequest, res: Response) 
         where: { id: order.userId },
         data: {
           walletBalance: { increment: order.finalAmount },
-        },
-      });
-      await prisma.walletTransaction.create({
-        data: {
-          userId: order.userId,
-          amount: order.finalAmount,
-          type: 'CREDIT',
-          description: `Refund for cancelled Order #${order.id.slice(-6).toUpperCase()}`,
         },
       });
       refundIssued = true;

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.downloadInvoice = exports.validateCoupon = exports.getAdminOrders = exports.getOrderById = exports.getOrderHistory = exports.updateOrderStatus = exports.confirmPayment = exports.createOrder = void 0;
+exports.cancelUserOrder = exports.downloadInvoice = exports.validateCoupon = exports.getAdminOrders = exports.getOrderById = exports.getOrderHistory = exports.updateOrderStatus = exports.confirmPayment = exports.createOrder = void 0;
 const zod_1 = require("zod");
 const db_1 = __importDefault(require("../config/db"));
 const client_1 = require("@prisma/client");
@@ -19,7 +19,10 @@ const orderSchema = zod_1.z.object({
         quantity: zod_1.z.number().int().positive(),
     })).min(1, 'Order must contain at least one item'),
     paymentMethod: zod_1.z.string(), // STRIPE, RAZORPAY, UPI, COD
-    addressId: zod_1.z.string(),
+    orderType: zod_1.z.enum(['DELIVERY', 'DINE_IN', 'TAKEAWAY']).optional().default('DELIVERY'),
+    addressId: zod_1.z.string().optional(),
+    tableNumber: zod_1.z.string().optional(),
+    pickupNotes: zod_1.z.string().optional(),
     couponCode: zod_1.z.string().optional(),
 });
 const createOrder = async (req, res) => {
@@ -30,26 +33,68 @@ const createOrder = async (req, res) => {
         if (!validation.success) {
             return res.status(400).json({ errors: validation.error.format() });
         }
-        const { items, paymentMethod, addressId, couponCode } = validation.data;
-        // 1. Fetch Address
-        const addressRecord = await db_1.default.address.findUnique({ where: { id: addressId } });
-        if (!addressRecord || addressRecord.userId !== req.user.id) {
-            return res.status(400).json({ message: 'Invalid address selected' });
+        const { items, paymentMethod, orderType = 'DELIVERY', addressId, tableNumber, pickupNotes, couponCode } = validation.data;
+        // 0. Check if restaurant is currently OPEN
+        const storeStatus = await db_1.default.setting.findUnique({ where: { key: 'is_open' } });
+        if (storeStatus && storeStatus.value === 'false') {
+            const openingSetting = await db_1.default.setting.findUnique({ where: { key: 'opening_time' } });
+            const openTime = openingSetting?.value || '11:00 AM';
+            return res.status(403).json({
+                message: `Restaurant is currently closed! You cannot place orders right now. Please come tomorrow morning at ${openTime}.`,
+                isClosed: true,
+            });
         }
-        const fullAddressString = `${addressRecord.street}, ${addressRecord.city}, ${addressRecord.state} - ${addressRecord.postalCode}`;
+        // 1. Fetch / Build Address based on Order Type
+        let fullAddressString = '';
+        if (orderType === 'DELIVERY') {
+            if (!addressId) {
+                return res.status(400).json({ message: 'Delivery address is required for online delivery' });
+            }
+            const addressRecord = await db_1.default.address.findUnique({ where: { id: addressId } });
+            if (!addressRecord || addressRecord.userId !== req.user.id) {
+                return res.status(400).json({ message: 'Invalid address selected' });
+            }
+            fullAddressString = `Delivery: ${addressRecord.street}, ${addressRecord.city}, ${addressRecord.state} - ${addressRecord.postalCode}`;
+        }
+        else if (orderType === 'DINE_IN') {
+            fullAddressString = `Dine-In: ${tableNumber ? (tableNumber.toLowerCase().includes('table') ? tableNumber : `Table ${tableNumber}`) : 'Table Seating'}`;
+        }
+        else if (orderType === 'TAKEAWAY') {
+            fullAddressString = `Takeaway / Parcel: ${pickupNotes || 'Counter Pickup'}`;
+        }
         // 2. Calculate Pricing
         let subtotal = 0;
         const orderItemsToCreate = [];
         for (const item of items) {
-            const menuItem = await db_1.default.menuItem.findUnique({ where: { id: item.menuItemId } });
+            // Extract base UUID if size suffix is appended (e.g. uuid-half, uuid-single, uuid-family)
+            const parts = item.menuItemId.split('-');
+            let baseId = item.menuItemId;
+            let sizeSuffix = null;
+            if (parts.length > 5) {
+                sizeSuffix = parts[parts.length - 1];
+                baseId = parts.slice(0, 5).join('-');
+            }
+            let menuItem = await db_1.default.menuItem.findUnique({ where: { id: baseId } });
+            if (!menuItem) {
+                menuItem = await db_1.default.menuItem.findUnique({ where: { id: item.menuItemId } });
+            }
             if (!menuItem || !menuItem.availability) {
                 return res.status(404).json({ message: `Menu item not found or unavailable: ${item.menuItemId}` });
             }
-            const itemPrice = Number(menuItem.price) - Number(menuItem.discount);
+            // Determine size-based price if applicable
+            let itemPrice = Number(menuItem.price) - Number(menuItem.discount);
+            if (sizeSuffix) {
+                if (sizeSuffix === 'half' && menuItem.halfPrice) {
+                    itemPrice = Number(menuItem.halfPrice);
+                }
+                else if (sizeSuffix === 'family' && menuItem.familyPrice) {
+                    itemPrice = Number(menuItem.familyPrice);
+                }
+            }
             const itemTotal = itemPrice * item.quantity;
             subtotal += itemTotal;
             orderItemsToCreate.push({
-                menuItemId: item.menuItemId,
+                menuItemId: menuItem.id,
                 quantity: item.quantity,
                 price: itemPrice,
             });
@@ -58,7 +103,10 @@ const createOrder = async (req, res) => {
         let discount = 0;
         let couponId = null;
         if (couponCode) {
-            const coupon = await db_1.default.coupon.findUnique({ where: { code: couponCode } });
+            const cleanCode = couponCode.trim().toUpperCase();
+            const coupon = await db_1.default.coupon.findFirst({
+                where: { code: { equals: cleanCode, mode: 'insensitive' } }
+            });
             if (coupon && coupon.active && new Date() < coupon.expiryDate && subtotal >= Number(coupon.minOrderAmount)) {
                 couponId = coupon.id;
                 if (coupon.discountType === 'PERCENTAGE') {
@@ -69,10 +117,10 @@ const createOrder = async (req, res) => {
                 }
             }
         }
-        // 4. Calculate Taxes & Delivery (GST 5% + Flat 40 Rs Delivery)
+        // 4. Calculate Taxes & Delivery (GST 5% + Delivery if applicable)
         const gstRate = 0.05;
         const tax = subtotal * gstRate;
-        const deliveryCharges = subtotal > 1000 ? 0.00 : 40.00; // Free delivery above 1000 INR
+        const deliveryCharges = orderType === 'DELIVERY' ? (subtotal > 1000 ? 0.00 : 40.00) : 0.00; // Free delivery for Dine-In/Takeaway or >1000 INR
         const finalAmount = subtotal - discount + tax + deliveryCharges;
         // 5. Create Order
         const order = await db_1.default.order.create({
@@ -368,7 +416,10 @@ const validateCoupon = async (req, res) => {
         if (!code || !amount) {
             return res.status(400).json({ message: 'Coupon code and order amount are required' });
         }
-        const coupon = await db_1.default.coupon.findUnique({ where: { code } });
+        const cleanCode = String(code).trim().toUpperCase();
+        const coupon = await db_1.default.coupon.findFirst({
+            where: { code: { equals: cleanCode, mode: 'insensitive' } },
+        });
         if (!coupon || !coupon.active || new Date() > coupon.expiryDate) {
             return res.status(400).json({ message: 'Coupon code is invalid or expired' });
         }
@@ -489,3 +540,66 @@ const downloadInvoice = async (req, res) => {
     }
 };
 exports.downloadInvoice = downloadInvoice;
+// Customer Cancel Order
+const cancelUserOrder = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        const { orderId } = req.params;
+        const { reason } = req.body;
+        const order = await db_1.default.order.findUnique({
+            where: { id: orderId },
+            include: { payments: true },
+        });
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+        // Verify ownership (unless admin/manager)
+        if (order.userId !== req.user.id && req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') {
+            return res.status(403).json({ message: 'Unauthorized to cancel this order' });
+        }
+        // Cannot cancel if already DELIVERED or CANCELLED
+        if (order.status === client_1.OrderStatus.DELIVERED) {
+            return res.status(400).json({ message: 'Order has already been delivered and cannot be cancelled.' });
+        }
+        if (order.status === client_1.OrderStatus.CANCELLED) {
+            return res.status(400).json({ message: 'Order is already cancelled.' });
+        }
+        // Refund if already paid
+        let refundIssued = false;
+        if (order.paymentStatus === client_1.PaymentStatus.COMPLETED) {
+            await db_1.default.user.update({
+                where: { id: order.userId },
+                data: {
+                    walletBalance: { increment: order.finalAmount },
+                },
+            });
+            refundIssued = true;
+        }
+        const updatedOrder = await db_1.default.order.update({
+            where: { id: orderId },
+            data: {
+                status: client_1.OrderStatus.CANCELLED,
+                paymentStatus: refundIssued ? client_1.PaymentStatus.REFUNDED : order.paymentStatus,
+            },
+        });
+        await db_1.default.orderTracking.create({
+            data: {
+                orderId,
+                status: client_1.OrderStatus.CANCELLED,
+                description: reason || 'Order cancelled by customer. Refund processed if applicable.',
+            },
+        });
+        return res.status(200).json({
+            message: 'Order cancelled successfully',
+            refundIssued,
+            order: updatedOrder,
+        });
+    }
+    catch (error) {
+        console.error('Cancel order error:', error);
+        return res.status(500).json({ message: 'Error cancelling order', error });
+    }
+};
+exports.cancelUserOrder = cancelUserOrder;

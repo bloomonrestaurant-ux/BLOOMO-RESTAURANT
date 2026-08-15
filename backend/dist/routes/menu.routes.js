@@ -5,6 +5,8 @@ const menu_controller_1 = require("../controllers/menu.controller");
 const auth_middleware_1 = require("../middlewares/auth.middleware");
 const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
+// Public Settings
+router.get('/public-settings', menu_controller_1.getPublicSettings);
 // Category Routes
 router.get('/categories', menu_controller_1.getCategories);
 router.post('/categories', auth_middleware_1.protect, (0, auth_middleware_1.restrictTo)(client_1.Role.ADMIN, client_1.Role.MANAGER), menu_controller_1.createCategory);

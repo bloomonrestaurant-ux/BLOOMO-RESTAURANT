@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addReview = exports.getWishlist = exports.toggleWishlist = exports.deleteMenuItem = exports.updateMenuItem = exports.createMenuItem = exports.getMenuItem = exports.getMenuItems = exports.deleteCategory = exports.updateCategory = exports.createCategory = exports.getCategories = void 0;
+exports.getPublicSettings = exports.addReview = exports.getWishlist = exports.toggleWishlist = exports.deleteMenuItem = exports.updateMenuItem = exports.createMenuItem = exports.getMenuItem = exports.getMenuItems = exports.deleteCategory = exports.updateCategory = exports.createCategory = exports.getCategories = void 0;
 const zod_1 = require("zod");
 const db_1 = __importDefault(require("../config/db"));
 // 1. Categories Controllers
@@ -179,6 +179,9 @@ const createMenuItem = async (req, res) => {
             description: zod_1.z.string(),
             price: zod_1.z.number().positive(),
             discount: zod_1.z.number().nonnegative().default(0),
+            isMultiSize: zod_1.z.boolean().default(false).optional(),
+            halfPrice: zod_1.z.number().positive().optional().nullable(),
+            familyPrice: zod_1.z.number().positive().optional().nullable(),
             availability: zod_1.z.boolean().default(true),
             imageUrl: zod_1.z.string().optional(),
             categoryId: zod_1.z.string(),
@@ -209,6 +212,9 @@ const updateMenuItem = async (req, res) => {
             description: zod_1.z.string().optional(),
             price: zod_1.z.number().positive().optional(),
             discount: zod_1.z.number().nonnegative().optional(),
+            isMultiSize: zod_1.z.boolean().optional(),
+            halfPrice: zod_1.z.number().positive().optional().nullable(),
+            familyPrice: zod_1.z.number().positive().optional().nullable(),
             availability: zod_1.z.boolean().optional(),
             imageUrl: zod_1.z.string().optional(),
             categoryId: zod_1.z.string().optional(),
@@ -347,3 +353,27 @@ const addReview = async (req, res) => {
     }
 };
 exports.addReview = addReview;
+// 6. Public Restaurant Settings (Open/Closed status, timings, contact)
+const getPublicSettings = async (_req, res) => {
+    try {
+        const settings = await db_1.default.setting.findMany();
+        const settingsMap = {
+            is_open: 'true',
+            opening_time: '11:00',
+            closing_time: '23:00',
+            restaurant_name: 'Bloomon Family Restaurant',
+            tagline: "Warangal's Premier Luxury Dining Experience",
+            phone: '+91 98765 43210',
+            address: 'Hunter Road, Hanamkonda, Warangal, Telangana 506001',
+        };
+        settings.forEach((s) => {
+            settingsMap[s.key] = s.value;
+        });
+        return res.status(200).json({ settings: settingsMap });
+    }
+    catch (error) {
+        console.error('Fetch public settings error:', error);
+        return res.status(500).json({ message: 'Error retrieving settings', error });
+    }
+};
+exports.getPublicSettings = getPublicSettings;

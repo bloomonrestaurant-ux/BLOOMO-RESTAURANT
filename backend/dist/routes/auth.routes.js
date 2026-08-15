@@ -14,6 +14,8 @@ router.post('/reset-password', auth_controller_1.resetPassword);
 router.post('/google-login', auth_controller_1.googleLogin);
 // Protected routes
 router.get('/profile', auth_middleware_1.protect, auth_controller_1.getProfile);
+router.post('/profile/send-otp', auth_middleware_1.protect, auth_controller_1.sendProfileOTP);
+router.put('/profile/update-with-otp', auth_middleware_1.protect, auth_controller_1.updateProfileWithOTP);
 router.post('/address', auth_middleware_1.protect, auth_controller_1.addAddress);
 router.delete('/address/:addressId', auth_middleware_1.protect, auth_controller_1.deleteAddress);
 exports.default = router;
