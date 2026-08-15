@@ -24,4 +24,18 @@ API.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle expired/invalid tokens gracefully
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      if (localStorage.getItem('token')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default API;

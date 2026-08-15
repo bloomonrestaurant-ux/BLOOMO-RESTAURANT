@@ -14,6 +14,8 @@ interface CartState {
   couponCode: string | null;
   couponDiscountValue: number; // Flat or Percentage deduction multiplier
   couponDiscountType: 'PERCENTAGE' | 'FIXED' | null;
+  selectedTable: string;
+  orderType: 'DELIVERY' | 'DINE_IN' | 'TAKEAWAY';
 }
 
 const initialState: CartState = {
@@ -21,6 +23,8 @@ const initialState: CartState = {
   couponCode: null,
   couponDiscountValue: 0,
   couponDiscountType: null,
+  selectedTable: 'Table 1',
+  orderType: 'DINE_IN',
 };
 
 const cartSlice = createSlice({
@@ -44,6 +48,19 @@ const cartSlice = createSlice({
         existing.quantity = action.payload.quantity;
       }
     },
+    setSelectedTable: (state, action: PayloadAction<string>) => {
+      state.selectedTable = action.payload;
+      if (action.payload.startsWith('Table')) {
+        state.orderType = 'DINE_IN';
+      } else if (action.payload === 'Takeaway') {
+        state.orderType = 'TAKEAWAY';
+      } else if (action.payload === 'Delivery') {
+        state.orderType = 'DELIVERY';
+      }
+    },
+    setOrderType: (state, action: PayloadAction<'DELIVERY' | 'DINE_IN' | 'TAKEAWAY'>) => {
+      state.orderType = action.payload;
+    },
     applyCoupon: (
       state,
       action: PayloadAction<{ code: string; value: number; type: 'PERCENTAGE' | 'FIXED' }>
@@ -66,6 +83,14 @@ const cartSlice = createSlice({
   },
 });
 
-export const { addItem, removeItem, updateQuantity, applyCoupon, removeCoupon, clearCart } =
-  cartSlice.actions;
+export const {
+  addItem,
+  removeItem,
+  updateQuantity,
+  setSelectedTable,
+  setOrderType,
+  applyCoupon,
+  removeCoupon,
+  clearCart,
+} = cartSlice.actions;
 export default cartSlice.reducer;

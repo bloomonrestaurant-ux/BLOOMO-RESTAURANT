@@ -32,6 +32,32 @@
   }
 }
 
+/* ── Light Theme Overrides ── */
+html.light-theme body {
+  background-color: #FBF8F2;
+  color: #2D2318;
+}
+
+html.light-theme h1,
+html.light-theme h2,
+html.light-theme h3,
+html.light-theme h4,
+html.light-theme h5,
+html.light-theme h6 {
+  color: #1A120B;
+}
+
+html.light-theme .glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+html.light-theme .glass-nav {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
 /* ── Glassmorphism Navbar ── */
 .glass-nav {
   background: rgba(10, 10, 10, 0.75);

@@ -65,7 +65,7 @@ export default function Navigation() {
             className="rounded-full object-cover"
             priority
           />
-          <span className="font-display text-lg md:text-2xl font-bold tracking-widest text-gold-gradient">
+          <span className="font-display text-lg md:text-2xl font-black tracking-widest text-[#D4AF37] drop-shadow-[0_2px_8px_rgba(212,175,55,0.4)]">
             BLOOMON
           </span>
         </Link>
@@ -104,6 +104,14 @@ export default function Navigation() {
 
           {isAuthenticated ? (
             <div className="flex items-center space-x-4">
+              {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                <Link
+                  href="/admin"
+                  className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#D4AF37] text-bg-dark hover:opacity-90 transition-all shadow-md flex items-center gap-1.5"
+                >
+                  <span>👑 Admin Portal</span>
+                </Link>
+              )}
               <Link
                 href={user?.role === 'ADMIN' || user?.role === 'MANAGER' ? '/admin' : '/dashboard'}
                 className="text-primary-light hover:text-primary transition-colors flex items-center space-x-1"
@@ -113,7 +121,7 @@ export default function Navigation() {
               </Link>
               <button
                 onClick={handleLogout}
-                className="text-primary-light hover:text-red-400 transition-colors"
+                className="text-primary-light hover:text-red-400 transition-colors cursor-pointer"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -174,6 +182,14 @@ export default function Navigation() {
               <div className="border-t border-primary/10 pt-6 flex flex-col space-y-4">
                 {isAuthenticated ? (
                   <>
+                    {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+                      <Link
+                        href="/admin"
+                        className="text-primary font-bold flex items-center space-x-2 text-base font-sans"
+                      >
+                        <span>👑 Open Admin Management Portal</span>
+                      </Link>
+                    )}
                     <Link
                       href={user?.role === 'ADMIN' || user?.role === 'MANAGER' ? '/admin' : '/dashboard'}
                       className="text-primary-light flex items-center space-x-2 text-base font-sans"

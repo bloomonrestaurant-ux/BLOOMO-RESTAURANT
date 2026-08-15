@@ -368,3 +368,27 @@ export const addReview = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(500).json({ message: 'Error adding review', error });
   }
 };
+
+// 6. Public Restaurant Settings (Open/Closed status, timings, contact)
+export const getPublicSettings = async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const settings = await prisma.setting.findMany();
+    const settingsMap: Record<string, string> = {
+      is_open: 'true',
+      opening_time: '11:00',
+      closing_time: '23:00',
+      restaurant_name: 'Bloomon Family Restaurant',
+      tagline: "Warangal's Premier Luxury Dining Experience",
+      phone: '+91 98765 43210',
+      address: 'Hunter Road, Hanamkonda, Warangal, Telangana 506001',
+    };
+    settings.forEach((s) => {
+      settingsMap[s.key] = s.value;
+    });
+    return res.status(200).json({ settings: settingsMap });
+  } catch (error) {
+    console.error('Fetch public settings error:', error);
+    return res.status(500).json({ message: 'Error retrieving settings', error });
+  }
+};
+

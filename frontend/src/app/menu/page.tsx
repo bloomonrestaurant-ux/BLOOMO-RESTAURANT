@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDispatch, useSelector } from 'react-redux';
-import { addItem, removeItem, updateQuantity } from '@/store/cartSlice';
+import { addItem, removeItem, updateQuantity, setSelectedTable } from '@/store/cartSlice';
 import { RootState } from '@/store';
 import API from '@/services/api';
-import { ShoppingBag, X, Plus, Minus, ChevronRight, Utensils, Heart, Eye } from 'lucide-react';
+import { ShoppingBag, X, Plus, Minus, ChevronRight, Utensils, Heart, Eye, Moon, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import RestaurantClosedModal from '@/components/RestaurantClosedModal';
 
 // ─── Menu Types ─────────────────────────────────────────────────────────────
 interface MenuItem {
@@ -91,9 +91,10 @@ export default function MenuPage() {
   const router = useRouter();
 
   const [cartOpen, setCartOpen] = useState(false);
-  const [selectedTable, setSelectedTable] = useState<string>('');
+  const selectedTable = useSelector((state: RootState) => state.cart.selectedTable);
   const [filter, setFilter] = useState<'All' | 'Veg' | 'Non-Veg'>('All');
-  
+  const [showClosedModal, setShowClosedModal] = useState(false);
+
   // Track selected sizes for multi-size items: Record<itemId, 'single' | 'half' | 'family'>
   const [selectedSizes, setSelectedSizes] = useState<Record<string, 'single' | 'half' | 'family'>>({});
 
@@ -101,13 +102,54 @@ export default function MenuPage() {
   const cartTotal = cartItems.reduce((sum, item) => sum + (item.price - item.discount) * item.quantity, 0);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Fetch live menu items from DB
+  // Fetch live restaurant public settings (is_open, timings)
+  const { data: settingsData } = useQuery({
+    queryKey: ['publicRestaurantSettings'],
+    queryFn: async () => {
+      try {
+        const res = await API.get('/menu/public-settings');
+        return res.data?.settings || {};
+      } catch {
+        return {};
+      }
+    },
+    refetchInterval: 3000,
+  });
+
+  const formatTimeString = (timeStr?: string, defaultVal: string = '11:00 AM') => {
+    if (!timeStr) return defaultVal;
+    if (timeStr.includes('AM') || timeStr.includes('PM') || timeStr.includes('am') || timeStr.includes('pm')) {
+      return timeStr;
+    }
+    const [hStr, mStr] = timeStr.split(':');
+    const h = parseInt(hStr, 10);
+    const m = parseInt(mStr || '0', 10);
+    if (isNaN(h)) return defaultVal;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const formattedH = h % 12 === 0 ? 12 : h % 12;
+    const formattedM = m < 10 ? `0${m}` : m;
+    return `${formattedH}:${formattedM} ${ampm}`;
+  };
+
+  const isStoreOpen = settingsData?.is_open !== 'false';
+  const openingTime = formatTimeString(settingsData?.opening_time, '11:00 AM');
+  const closingTime = formatTimeString(settingsData?.closing_time, '11:00 PM');
+
+  // Auto popup closed modal when restaurant is closed
+  useEffect(() => {
+    if (settingsData && settingsData.is_open === 'false') {
+      setShowClosedModal(true);
+    }
+  }, [settingsData?.is_open]);
+
+  // Fetch live menu items from DB with caching
   const { data: dbItems, isLoading } = useQuery({
     queryKey: ['publicMenuItems'],
     queryFn: async () => {
       const res = await API.get('/menu/items');
       return res.data.menuItems as any[];
-    }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes cache for instant zero-lag rendering
   });
 
   // Combine or format items
@@ -133,7 +175,7 @@ export default function MenuPage() {
   }, [dbItems]);
 
   // Filter items based on selected category
-  const filteredItems = menuItems.filter(item => 
+  const filteredItems = menuItems.filter(item =>
     filter === 'All' ? true : item.category === filter
   );
 
@@ -142,11 +184,16 @@ export default function MenuPage() {
   };
 
   const handleAddToCart = (item: MenuItem) => {
+    if (!isStoreOpen) {
+      setShowClosedModal(true);
+      return;
+    }
+
     if (item.isMultiSize) {
       const size = selectedSizes[item.id] || 'single';
       const price = size === 'single' ? item.single! : size === 'half' ? item.half! : item.family!;
       const sizeLabel = size.charAt(0).toUpperCase() + size.slice(1);
-      
+
       dispatch(addItem({
         id: `${item.id}-${size}`,
         name: `${item.name} (${sizeLabel})`,
@@ -167,48 +214,99 @@ export default function MenuPage() {
   };
 
   const handlePlaceOrder = () => {
+    if (!isStoreOpen) {
+      setShowClosedModal(true);
+      return;
+    }
     router.push('/checkout');
   };
 
   return (
     <div className="min-h-screen bg-[#0B0B0C] pb-20 font-sans pt-[72px]">
+      {/* Closed Modal Component */}
+      <RestaurantClosedModal
+        isOpen={showClosedModal}
+        onClose={() => setShowClosedModal(false)}
+        openingTime={openingTime}
+        closingTime={closingTime}
+      />
+
       {/* ── Hero & Filters ─────────────────────────────────────────────── */}
       <div className="pt-16 pb-8 text-center space-y-3">
         <p className="text-xs font-bold tracking-[0.2em] text-[#D4AF37]">DISCOVER OUR FLAVORS</p>
         <h1 className="text-4xl md:text-5xl font-display font-bold text-gold-gradient">Gourmet Menu</h1>
         <div className="w-24 h-px bg-primary/40 mx-auto mt-4 mb-8" />
-        
+
+        {/* Closed Store Notification Banner */}
+        {!isStoreOpen && (
+          <div className="max-w-6xl mx-auto px-6 mb-8">
+            <div className="bg-gradient-to-r from-rose-950/80 via-amber-950/70 to-rose-950/80 border border-amber-500/50 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-lg">
+                  <Moon className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h3 className="text-base md:text-lg font-bold text-[#F3E5AB]">
+                      The restaurant was closed now. <span className="text-[#D4AF37]">Please come back tomorrow morning at {openingTime}.</span>
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/30 text-rose-300 border border-rose-500/40 uppercase tracking-wide">
+                      Ordering Paused
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300">
+                    Online orders are currently paused for today. You can freely explore our gourmet dishes below.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const menuEl = document.querySelector('#menu-dishes');
+                  if (menuEl) {
+                    menuEl.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    window.scrollTo({ top: 400, behavior: 'smooth' });
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold glow-btn bg-gold-gradient text-bg-dark shrink-0 flex items-center gap-2 transition-all cursor-pointer shadow-lg"
+              >
+                <Utensils className="w-4 h-4" />
+                <span>You can see the menu</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex items-center justify-between max-w-6xl mx-auto px-6 mt-8 flex-wrap gap-4">
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={() => setFilter('All')}
-              className={`px-6 py-2 rounded-full font-bold text-sm transition-all ${
-                filter === 'All' 
-                  ? 'bg-[#D4AF37] text-[#0B0B0C]' 
+              className={`px-6 py-2 rounded-full font-bold text-sm transition-all ${filter === 'All'
+                  ? 'bg-[#D4AF37] text-[#0B0B0C]'
                   : 'bg-white/5 text-gray-400 border border-white/10 hover:border-[#D4AF37]/50'
-              }`}
+                }`}
             >
               All
             </button>
-            <button 
+            <button
               onClick={() => setFilter('Veg')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all ${
-                filter === 'Veg' 
-                  ? 'bg-white/10 text-white border border-green-500/50' 
+              className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all ${filter === 'Veg'
+                  ? 'bg-white/10 text-white border border-green-500/50'
                   : 'bg-white/5 text-gray-400 border border-white/10 hover:border-green-500/30'
-              }`}
+                }`}
             >
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
               Veg
             </button>
-            <button 
+            <button
               onClick={() => setFilter('Non-Veg')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all ${
-                filter === 'Non-Veg' 
-                  ? 'bg-white/10 text-white border border-red-500/50' 
+              className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all ${filter === 'Non-Veg'
+                  ? 'bg-white/10 text-white border border-red-500/50'
                   : 'bg-white/5 text-gray-400 border border-white/10 hover:border-red-500/30'
-              }`}
+                }`}
             >
               <span className="w-2 h-2 rounded-full bg-red-500"></span>
               Non-Veg
@@ -239,110 +337,110 @@ export default function MenuPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => {
-            const isVeg = item.category === 'Veg';
-            const currentSize = selectedSizes[item.id] || 'single';
-            const displayPrice = item.isMultiSize 
-              ? currentSize === 'single' ? item.single : currentSize === 'half' ? item.half : item.family 
-              : item.price;
+            {filteredItems.map((item) => {
+              const isVeg = item.category === 'Veg';
+              const currentSize = selectedSizes[item.id] || 'single';
+              const displayPrice = item.isMultiSize
+                ? currentSize === 'single' ? item.single : currentSize === 'half' ? item.half : item.family
+                : item.price;
 
-            return (
-              <motion.div 
-                key={item.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="bg-[#111111] rounded-2xl overflow-hidden border border-white/5 group hover:border-[#D4AF37]/30 transition-all hover:shadow-[0_8px_30px_rgba(212,175,55,0.08)] flex flex-col"
-              >
-                {/* Image Container */}
-                <div className="relative h-48 w-full overflow-hidden bg-white/5">
-                  <Image 
-                    src={item.image} 
-                    alt={item.name} 
-                    fill 
-                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                  />
-                  {/* Category Tag overlay */}
-                  <div className="absolute top-3 left-3 bg-[#1A1A1A]/90 backdrop-blur-sm border border-white/10 rounded-md px-2 py-1 flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${isVeg ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">{item.category}</span>
-                  </div>
-                  {/* Heart Icon */}
-                  <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-red-500 transition-colors">
-                    <Heart className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Content Container */}
-                <div className="p-5 flex flex-col flex-grow">
-                  <div className="flex justify-between items-start gap-4 mb-2">
-                    <h3 className="text-lg font-bold text-white font-sans line-clamp-1">{item.name}</h3>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-[#D4AF37]">₹{displayPrice}</p>
+              return (
+                <motion.div
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-[#111111] rounded-2xl overflow-hidden border border-white/5 group hover:border-[#D4AF37]/30 transition-all hover:shadow-[0_8px_30px_rgba(212,175,55,0.08)] flex flex-col"
+                >
+                  {/* Image Container */}
+                  <div className="relative h-48 w-full overflow-hidden bg-white/5">
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {/* Category Tag overlay */}
+                    <div className="absolute top-3 left-3 bg-[#1A1A1A]/90 backdrop-blur-sm border border-white/10 rounded-md px-2 py-1 flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${isVeg ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                      <span className="text-[10px] font-bold text-white uppercase tracking-widest">{item.category}</span>
                     </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2 leading-relaxed">
-                    {item.description}
-                  </p>
-
-                  {/* Meta Icons */}
-                  <div className="flex items-center gap-4 text-xs font-bold text-gray-500 mb-5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-orange-500">🔥</span> {item.calories}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[#D4AF37]">🕒</span> {item.time}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-yellow-400">⭐</span> {item.rating}
-                    </div>
+                    {/* Heart Icon */}
+                    <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-red-500 transition-colors">
+                      <Heart className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  <div className="mt-auto space-y-3">
-                    {/* Size Selector for Biryanies */}
-                    {item.isMultiSize && (
-                      <div className="flex items-center justify-between bg-white/5 rounded-lg p-1 border border-white/5">
-                        <button 
-                          onClick={() => handleSizeChange(item.id, 'single')}
-                          className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-colors ${currentSize === 'single' ? 'bg-[#D4AF37] text-black' : 'text-gray-400 hover:text-white'}`}
-                        >
-                          Single
+                  {/* Content Container */}
+                  <div className="p-5 flex flex-col flex-grow">
+                    <div className="flex justify-between items-start gap-4 mb-2">
+                      <h3 className="text-lg font-bold text-white font-sans line-clamp-1">{item.name}</h3>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-[#D4AF37]">₹{displayPrice}</p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-gray-400 mb-4 line-clamp-2 leading-relaxed">
+                      {item.description}
+                    </p>
+
+                    {/* Meta Icons */}
+                    <div className="flex items-center gap-4 text-xs font-bold text-gray-500 mb-5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-orange-500">🔥</span> {item.calories}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[#D4AF37]">🕒</span> {item.time}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-yellow-400">⭐</span> {item.rating}
+                      </div>
+                    </div>
+
+                    <div className="mt-auto space-y-3">
+                      {/* Size Selector for Biryanies */}
+                      {item.isMultiSize && (
+                        <div className="flex items-center justify-between bg-white/5 rounded-lg p-1 border border-white/5">
+                          <button
+                            onClick={() => handleSizeChange(item.id, 'single')}
+                            className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-colors ${currentSize === 'single' ? 'bg-[#D4AF37] text-black' : 'text-gray-400 hover:text-white'}`}
+                          >
+                            Single
+                          </button>
+                          <button
+                            onClick={() => handleSizeChange(item.id, 'half')}
+                            className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-colors ${currentSize === 'half' ? 'bg-[#D4AF37] text-black' : 'text-gray-400 hover:text-white'}`}
+                          >
+                            Half
+                          </button>
+                          <button
+                            onClick={() => handleSizeChange(item.id, 'family')}
+                            className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-colors ${currentSize === 'family' ? 'bg-[#D4AF37] text-black' : 'text-gray-400 hover:text-white'}`}
+                          >
+                            Family
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3">
+                        <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold text-gray-300 border border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all">
+                          <Eye className="w-4 h-4" /> DETAILS
                         </button>
-                        <button 
-                          onClick={() => handleSizeChange(item.id, 'half')}
-                          className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-colors ${currentSize === 'half' ? 'bg-[#D4AF37] text-black' : 'text-gray-400 hover:text-white'}`}
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold bg-[#D4AF37] text-[#0B0B0C] hover:opacity-90 transition-all shadow-md"
                         >
-                          Half
-                        </button>
-                        <button 
-                          onClick={() => handleSizeChange(item.id, 'family')}
-                          className={`flex-1 text-xs py-1.5 rounded-md font-bold transition-colors ${currentSize === 'family' ? 'bg-[#D4AF37] text-black' : 'text-gray-400 hover:text-white'}`}
-                        >
-                          Family
+                          <ShoppingBag className="w-4 h-4" /> ADD TO CART
                         </button>
                       </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                      <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold text-gray-300 border border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all">
-                        <Eye className="w-4 h-4" /> DETAILS
-                      </button>
-                      <button 
-                        onClick={() => handleAddToCart(item)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold bg-[#D4AF37] text-[#0B0B0C] hover:opacity-90 transition-all shadow-md"
-                      >
-                        <ShoppingBag className="w-4 h-4" /> ADD TO CART
-                      </button>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -458,11 +556,11 @@ export default function MenuPage() {
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] tracking-wider">
                       <Utensils className="w-4 h-4" />
-                      SELECT TABLE
+                      DINING / TABLE SELECTION
                     </label>
                     <select
                       value={selectedTable}
-                      onChange={(e) => setSelectedTable(e.target.value)}
+                      onChange={(e) => dispatch(setSelectedTable(e.target.value))}
                       className="w-full rounded-lg px-4 py-2.5 text-sm font-sans text-white focus:outline-none transition-colors cursor-pointer bg-white/5 border border-white/10 focus:border-[#D4AF37]/50"
                     >
                       <option value="" className="bg-gray-900">— Choose your table —</option>

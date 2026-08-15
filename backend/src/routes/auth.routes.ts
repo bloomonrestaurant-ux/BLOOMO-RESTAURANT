@@ -4,13 +4,15 @@ import {
   login,
   forgotPassword,
   verifyOTP,
+  resendOTP,
+  sendOTP,
   resetPassword,
   googleLogin,
   getProfile,
   addAddress,
   deleteAddress,
-  sendOTP,
-  resendOTP,
+  sendProfileOTP,
+  updateProfileWithOTP,
 } from '../controllers/auth.controller';
 import { protect } from '../middlewares/auth.middleware';
 
@@ -27,7 +29,10 @@ router.post('/google-login', googleLogin);
 
 // Protected routes
 router.get('/profile', protect, getProfile);
+router.post('/profile/send-otp', protect, sendProfileOTP);
+router.put('/profile/update-with-otp', protect, updateProfileWithOTP);
 router.post('/address', protect, addAddress);
 router.delete('/address/:addressId', protect, deleteAddress);
 
 export default router;
+

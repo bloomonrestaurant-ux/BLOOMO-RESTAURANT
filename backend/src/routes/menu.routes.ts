@@ -12,11 +12,15 @@ import {
   toggleWishlist,
   getWishlist,
   addReview,
+  getPublicSettings,
 } from '../controllers/menu.controller';
 import { protect, restrictTo } from '../middlewares/auth.middleware';
 import { Role } from '@prisma/client';
 
 const router = Router();
+
+// Public Settings
+router.get('/public-settings', getPublicSettings);
 
 // Category Routes
 router.get('/categories', getCategories);

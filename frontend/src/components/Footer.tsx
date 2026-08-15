@@ -17,7 +17,7 @@ export default function Footer() {
               height={50}
               className="rounded-full object-cover"
             />
-            <h3 className="font-display text-xl font-bold text-gold-gradient">
+            <h3 className="font-display text-xl font-black text-[#D4AF37] tracking-wider drop-shadow-[0_2px_8px_rgba(212,175,55,0.3)]">
               BLOOMON FAMILY RESTAURANT
             </h3>
           </div>

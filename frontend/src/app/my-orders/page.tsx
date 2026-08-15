@@ -1,12 +1,12 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import API from '@/services/api';
-import { Clock, ChefHat, Package, Truck, Smile, Download, ArrowLeft, Loader, History, RefreshCcw, Eye } from 'lucide-react';
+import { Clock, ChefHat, Package, Truck, Smile, Download, ArrowLeft, Loader, History, RefreshCcw, Eye, Ban, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const trackingStages = [
   { status: 'PENDING', label: 'Order Received', desc: 'Awaiting kitchen verification.', icon: Clock },
@@ -18,11 +18,40 @@ const trackingStages = [
 ];
 
 function MyOrdersContent() {
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const router = useRouter();
   const activeOrderId = searchParams.get('activeOrderId');
 
+  const [mounted, setMounted] = useState(false);
+  const [cancelModalOrder, setCancelModalOrder] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
+  // Cancellation Mutation
+  const cancelOrderMutation = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason?: string }) => {
+      const response = await API.post(`/orders/${orderId}/cancel`, { reason });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['userProfileOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['orderTracking'] });
+      setCancelModalOrder(null);
+      setCancelReason('');
+      setToastMessage('Order has been cancelled successfully.' + (data.refundIssued ? ' Amount refunded to your wallet!' : ''));
+      setTimeout(() => setToastMessage(null), 5000);
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || 'Failed to cancel order.');
+    },
+  });
 
   // Fetch full profile to get order history
   const { data: profileData, isLoading: profileLoading } = useQuery({
@@ -32,7 +61,7 @@ function MyOrdersContent() {
       const response = await API.get('/auth/profile');
       return response.data.user;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && mounted,
   });
 
   const orderHistory = profileData?.orders || [];
@@ -45,7 +74,7 @@ function MyOrdersContent() {
       const response = await API.get(`/orders/${activeOrderId}`);
       return response.data.order;
     },
-    enabled: !!activeOrderId,
+    enabled: !!activeOrderId && mounted,
     refetchInterval: 5000,
   });
 
@@ -92,25 +121,23 @@ function MyOrdersContent() {
   };
 
   const handleReorder = (order: any) => {
-    // Navigate to menu or directly add items to cart if that logic existed
-    // For now, redirecting to menu
     alert('Reordering items... Redirecting to Menu.');
     router.push('/menu');
   };
+
+  if (!mounted || activeOrderLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-bg-dark flex items-center justify-center">
+        <Loader className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated && !activeOrderId) {
     return (
       <div className="min-h-screen bg-bg-dark flex flex-col items-center justify-center space-y-6">
         <p className="text-primary-light">Please log in to view your order history.</p>
-        <button onClick={() => router.push('/dashboard')} className="glow-btn bg-gold-gradient text-bg-dark px-6 py-2 rounded font-bold">LOG IN</button>
-      </div>
-    );
-  }
-
-  if (activeOrderLoading || profileLoading) {
-    return (
-      <div className="min-h-screen bg-bg-dark flex items-center justify-center">
-        <Loader className="w-8 h-8 text-primary animate-spin" />
+        <button onClick={() => router.push('/dashboard')} className="glow-btn bg-gold-gradient text-bg-dark px-6 py-2 rounded font-bold cursor-pointer">LOG IN</button>
       </div>
     );
   }
@@ -217,15 +244,35 @@ function MyOrdersContent() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDownloadInvoice(displayActiveOrder.id)}
-                  className="glow-btn bg-transparent border border-primary text-primary hover:bg-primary hover:text-bg-dark w-full py-3 rounded text-xs font-bold tracking-wider flex items-center justify-center space-x-2 transition-all"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>DOWNLOAD INVOICE PDF</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => handleDownloadInvoice(displayActiveOrder.id)}
+                    className="glow-btn bg-transparent border border-primary text-primary hover:bg-primary hover:text-bg-dark flex-1 py-3 rounded text-xs font-bold tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>DOWNLOAD INVOICE</span>
+                  </button>
+
+                  {currentStatus !== 'DELIVERED' && currentStatus !== 'CANCELLED' && (
+                    <button
+                      onClick={() => setCancelModalOrder(displayActiveOrder)}
+                      className="bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 flex-1 py-3 rounded text-xs font-bold tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                    >
+                      <Ban className="w-4 h-4" />
+                      <span>CANCEL ORDER</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Feedback Message Toast */}
+        {toastMessage && (
+          <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{toastMessage}</span>
           </div>
         )}
 
@@ -241,51 +288,142 @@ function MyOrdersContent() {
                 <p className="text-primary-light/50 text-center py-12">No orders placed yet. Time for a royal feast!</p>
               ) : (
                 <div className="space-y-4">
-                  {orderHistory.map((ord: any) => (
-                    <div key={ord.id} className="p-5 border border-primary/10 rounded-lg bg-white/5 hover:border-primary/30 transition-all flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-primary font-bold text-sm uppercase">#{ord.id.slice(-8)}</span>
-                          <span className="text-xs text-primary-light/55">
-                            {new Date(ord.createdAt).toLocaleDateString()} at {new Date(ord.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </span>
-                        </div>
-                        <p className="text-xs text-primary-light/70 truncate max-w-sm">
-                          {ord.items?.map((i: any) => i.menuItem?.name).join(', ') || 'Various Items'}
-                        </p>
-                      </div>
-                      
-                      <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full md:w-auto">
-                        <div className="flex flex-col items-start md:items-end mr-4">
-                          <span className="font-bold text-primary-light text-sm">₹{Number(ord.finalAmount).toFixed(2)}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold mt-1 ${ord.status === 'DELIVERED' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-primary/20 text-primary border border-primary/30'}`}>
-                            {ord.status}
-                          </span>
+                  {orderHistory.map((ord: any) => {
+                    const isDelivered = ord.status === 'DELIVERED';
+                    const isCancelled = ord.status === 'CANCELLED';
+
+                    return (
+                      <div key={ord.id} className="p-5 border border-primary/10 rounded-lg bg-white/5 hover:border-primary/30 transition-all flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-primary font-bold text-sm uppercase">#{ord.id.slice(-8)}</span>
+                            <span className="text-xs text-primary-light/55">
+                              {new Date(ord.createdAt).toLocaleDateString()} at {new Date(ord.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                          </div>
+                          <p className="text-xs text-primary-light/70 truncate max-w-sm">
+                            {ord.items?.map((i: any) => i.menuItem?.name).join(', ') || 'Various Items'}
+                          </p>
                         </div>
                         
-                        <button
-                          onClick={() => handleDownloadInvoice(ord.id)}
-                          className="p-2 border border-primary/20 rounded hover:bg-primary hover:text-bg-dark text-primary transition-colors flex items-center gap-2"
-                          title="Download Invoice"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleReorder(ord)}
-                          className="bg-gold-gradient text-bg-dark px-4 py-2 rounded text-xs font-bold flex items-center gap-2 hover:opacity-90"
-                        >
-                          <RefreshCcw className="w-3.5 h-3.5" />
-                          <span>REORDER</span>
-                        </button>
+                        <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full md:w-auto">
+                          <div className="flex flex-col items-start md:items-end mr-4">
+                            <span className="font-bold text-primary-light text-sm">₹{Number(ord.finalAmount).toFixed(2)}</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold mt-1 ${isDelivered ? 'bg-green-500/20 text-green-400 border border-green-500/30' : isCancelled ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-primary/20 text-primary border border-primary/30'}`}>
+                              {ord.status}
+                            </span>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleDownloadInvoice(ord.id)}
+                            className="p-2 border border-primary/20 rounded hover:bg-primary hover:text-bg-dark text-primary transition-colors flex items-center gap-2"
+                            title="Download Invoice"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+
+                          {!isDelivered && !isCancelled && (
+                            <button
+                              onClick={() => setCancelModalOrder(ord)}
+                              className="px-3 py-2 rounded text-xs font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+                              title="Cancel Order"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                              <span>Cancel</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleReorder(ord)}
+                            className="bg-gold-gradient text-bg-dark px-4 py-2 rounded text-xs font-bold flex items-center gap-2 hover:opacity-90"
+                          >
+                            <RefreshCcw className="w-3.5 h-3.5" />
+                            <span>REORDER</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Cancel Order Confirmation Modal */}
+      {cancelModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            onClick={() => {
+              if (!cancelOrderMutation.isPending) setCancelModalOrder(null);
+            }}
+          />
+          <div className="relative w-full max-w-md bg-gradient-to-b from-[#1c1817] to-[#121010] border border-rose-500/30 rounded-3xl p-6 shadow-2xl shadow-black/90 text-center z-10 space-y-4">
+            <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+              <Ban className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold font-display text-white">Cancel Order?</h3>
+              <p className="text-xs text-gray-400 mt-1">
+                Order <span className="font-mono text-primary font-bold">#{cancelModalOrder.id.slice(0, 8).toUpperCase()}</span> will be cancelled.
+                {cancelModalOrder.paymentStatus === 'COMPLETED' && (
+                  <span className="block text-emerald-400 mt-1">
+                    ✨ ₹{Number(cancelModalOrder.finalAmount).toFixed(2)} will be instantly refunded to your wallet!
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <div className="space-y-1 text-left">
+              <label className="text-[11px] font-semibold text-gray-300">Reason for Cancellation (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Changed my mind / placed duplicate order"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 focus:border-rose-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                disabled={cancelOrderMutation.isPending}
+                onClick={() => setCancelModalOrder(null)}
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-gray-300 transition-all cursor-pointer"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                disabled={cancelOrderMutation.isPending}
+                onClick={() =>
+                  cancelOrderMutation.mutate({
+                    orderId: cancelModalOrder.id,
+                    reason: cancelReason,
+                  })
+                }
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/40 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {cancelOrderMutation.isPending ? (
+                  <>
+                    <Loader className="w-3.5 h-3.5 animate-spin" />
+                    <span>Cancelling...</span>
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-3.5 h-3.5" />
+                    <span>Confirm Cancel</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
