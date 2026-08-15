@@ -10,6 +10,6 @@ const supabaseKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  '';
+  'sb_publishable_CTZLDPD7MVV6bqhvz3fdNA_EMLiM2Hp';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
