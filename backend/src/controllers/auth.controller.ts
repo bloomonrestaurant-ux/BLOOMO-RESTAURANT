@@ -28,22 +28,21 @@ const generateToken = (payload: { id: string; email: string; role: Role }) => {
 
 /**
 /**
- * Helper to generate, store, and email OTP with a rate limit check
- * Deployment/Testing Mode: Fixed to universal OTP '123456'
+ * Helper to generate, store, and email dynamic 6-digit OTP with a rate limit check
  */
 const sendAndStoreOTP = async (email: string, name: string) => {
   const existingOTP = await prisma.oTP.findUnique({ where: { email } });
   if (existingOTP) {
     const secondsPassed = (Date.now() - new Date(existingOTP.createdAt).getTime()) / 1000;
-    if (secondsPassed < 5) {
-      const waitTime = Math.ceil(5 - secondsPassed);
+    if (secondsPassed < 30) {
+      const waitTime = Math.ceil(30 - secondsPassed);
       throw new Error(`Please wait ${waitTime} seconds before requesting a new OTP.`);
     }
   }
 
-  // Universal Deployment OTP
-  const otp = '123456';
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+  // Generate a secure, dynamic 6-digit OTP
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
 
   // Hash the OTP using bcrypt
   const hashedOtp = await bcrypt.hash(otp, 10);
@@ -65,12 +64,8 @@ const sendAndStoreOTP = async (email: string, name: string) => {
     },
   });
 
-  // Attempt email dispatch using Resend (fails gracefully if unverified domain in deployment)
-  try {
-    await sendOTPEmail(email, name, otp);
-  } catch (emailError: any) {
-    console.log(`[Universal OTP Mode active] Email dispatch note: ${emailError.message || 'Resend domain unconfigured'}. Default OTP '123456' remains valid.`);
-  }
+  // Dispatch OTP email
+  await sendOTPEmail(email, name, otp);
 };
 
 export const register = async (req: AuthenticatedRequest, res: Response) => {
@@ -229,24 +224,38 @@ export const verifyOTP = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const trimmedOtp = otp.toString().trim();
-    const isUniversalOtp = trimmedOtp === '123456' || trimmedOtp === '1234567';
 
-    if (!isUniversalOtp) {
-      const otpRecord = await prisma.oTP.findUnique({ where: { email } });
-      if (!otpRecord) {
-        return res.status(400).json({ message: 'No OTP requested for this email' });
+    const otpRecord = await prisma.oTP.findUnique({ where: { email } });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'No OTP requested for this email. Please request a new code.' });
+    }
+
+    // Check expiration
+    if (new Date() > new Date(otpRecord.expiresAt)) {
+      await prisma.oTP.delete({ where: { email } }).catch(() => {});
+      return res.status(400).json({ message: 'OTP has expired. Please request a new code.' });
+    }
+
+    // Check attempts limit
+    if (otpRecord.attempts >= 5) {
+      await prisma.oTP.delete({ where: { email } }).catch(() => {});
+      return res.status(400).json({ message: 'Maximum verification attempts reached. Please request a new OTP.' });
+    }
+
+    const isMatch = await bcrypt.compare(trimmedOtp, otpRecord.otp);
+    if (!isMatch) {
+      const updatedRecord = await prisma.oTP.update({
+        where: { email },
+        data: { attempts: { increment: 1 } },
+      });
+
+      const attemptsRemaining = 5 - updatedRecord.attempts;
+      if (attemptsRemaining <= 0) {
+        await prisma.oTP.delete({ where: { email } }).catch(() => {});
+        return res.status(400).json({ message: 'Maximum verification attempts reached. Please request a new OTP.' });
       }
 
-      // Check expiration
-      if (new Date() > new Date(otpRecord.expiresAt)) {
-        await prisma.oTP.delete({ where: { email } });
-        return res.status(400).json({ message: 'OTP has expired' });
-      }
-
-      const isMatch = await bcrypt.compare(trimmedOtp, otpRecord.otp);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid OTP. Please check and retry.' });
-      }
+      return res.status(400).json({ message: `Invalid OTP. ${attemptsRemaining} attempt(s) remaining.` });
     }
 
     // OTP verified successfully - Invalidate the OTP
@@ -554,23 +563,20 @@ export const updateProfileWithOTP = async (req: AuthenticatedRequest, res: Respo
 
     // Validate OTP against user email
     const trimmedOtp = otp.toString().trim();
-    const isUniversalOtp = trimmedOtp === '123456' || trimmedOtp === '1234567';
 
-    if (!isUniversalOtp) {
-      const otpRecord = await prisma.oTP.findUnique({ where: { email: user.email } });
-      if (!otpRecord) {
-        return res.status(400).json({ message: 'No active OTP requested. Please request an OTP first.' });
-      }
+    const otpRecord = await prisma.oTP.findUnique({ where: { email: user.email } });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'No active OTP requested. Please request an OTP first.' });
+    }
 
-      if (new Date() > new Date(otpRecord.expiresAt)) {
-        await prisma.oTP.delete({ where: { email: user.email } });
-        return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
-      }
+    if (new Date() > new Date(otpRecord.expiresAt)) {
+      await prisma.oTP.delete({ where: { email: user.email } }).catch(() => {});
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
 
-      const isMatch = await bcrypt.compare(trimmedOtp, otpRecord.otp);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid 6-digit OTP entered. Please check and retry.' });
-      }
+    const isMatch = await bcrypt.compare(trimmedOtp, otpRecord.otp);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid 6-digit OTP entered. Please check and retry.' });
     }
 
     // Apply specific field update

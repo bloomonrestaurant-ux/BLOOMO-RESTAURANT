@@ -52,7 +52,7 @@ BLOOMO-RESTAURANT/
 
 ---
 
-## 🔑 Default Credentials & Universal OTP
+## 🔑 Default Credentials & Authentication
 
 ### 👑 Admin Account
 - **Email**: `bloomonrestaurant@gmail.com`
@@ -60,9 +60,9 @@ BLOOMO-RESTAURANT/
 - **Role**: `ADMIN`
 - **Access Route**: `http://localhost:3000/admin`
 
-### 🔒 Universal Deployment & Testing OTP
-- **Universal OTP Code**: `123456`
-- *For hassle-free testing and deployment verification, any OTP prompt (New User Registration, Password Reset, or Profile Changes) universally accepts `123456`.*
+### 🔒 Account Verification & Security
+- Dynamic, cryptographic 6-digit OTP verification for user registration, password resets, and profile updates.
+- Integrated with Supabase Auth & PostgreSQL storage.
 
 ---
 
